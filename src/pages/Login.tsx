@@ -12,22 +12,48 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Preencha todos os campos");
-      return;
+    
+    if (isSignUp) {
+      // Validação para cadastro
+      if (!name || !email || !password) {
+        toast.error("Preencha todos os campos");
+        return;
+      }
+      if (password.length < 6) {
+        toast.error("Senha deve ter no mínimo 6 caracteres");
+        return;
+      }
+    } else {
+      // Validação para login
+      if (!email || !password) {
+        toast.error("Preencha todos os campos");
+        return;
+      }
     }
+
     setLoading(true);
     try {
-      await signIn(email, password);
-      navigate("/dashboard");
-      toast.success("Login realizado com sucesso!");
+      if (isSignUp) {
+        await signUp(email, password, name);
+        toast.success("Cadastro realizado com sucesso! Faça login agora.");
+        setIsSignUp(false);
+        setEmail("");
+        setPassword("");
+        setName("");
+      } else {
+        await signIn(email, password);
+        navigate("/dashboard");
+        toast.success("Login realizado com sucesso!");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Erro ao fazer login");
+      toast.error(err.message || isSignUp ? "Erro ao cadastrar" : "Erro ao fazer login");
     } finally {
       setLoading(false);
     }
@@ -45,19 +71,78 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <Input 
+                  id="name" 
+                  type="text" 
+                  placeholder="Seu nome" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="seu@email.com" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Entrar
+              {isSignUp ? "Cadastrar" : "Entrar"}
             </Button>
           </form>
+
+          <div className="mt-4 text-center text-sm">
+            {isSignUp ? (
+              <>
+                Já possui conta?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setEmail("");
+                    setPassword("");
+                    setName("");
+                  }}
+                  className="text-primary hover:underline font-semibold"
+                >
+                  Faça login aqui
+                </button>
+              </>
+            ) : (
+              <>
+                Não possui conta?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setEmail("");
+                    setPassword("");
+                  }}
+                  className="text-primary hover:underline font-semibold"
+                >
+                  Cadastre-se aqui
+                </button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
