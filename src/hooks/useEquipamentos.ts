@@ -35,7 +35,7 @@ export function useCreateEquipamento() {
 export function useUpdateEquipamento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; [key: string]: any }) => {
+    mutationFn: async ({ id, ...data }: { id: string; nome?: string; numero_serie?: string; setor_id?: string; status?: string; localizacao?: string; data_aquisicao?: string; valor?: number; observacoes?: string }) => {
       const { error } = await supabase.from("equipamentos").update(data).eq("id", id);
       if (error) throw error;
     },
