@@ -16,10 +16,14 @@ export type Database = {
     Tables: {
       equipamentos: {
         Row: {
+          categoria: string | null
+          codigo_barras: string | null
           created_at: string
           data_aquisicao: string | null
           id: string
           localizacao: string | null
+          marca: string | null
+          modelo: string | null
           nome: string
           numero_serie: string | null
           observacoes: string | null
@@ -29,10 +33,14 @@ export type Database = {
           valor: number | null
         }
         Insert: {
+          categoria?: string | null
+          codigo_barras?: string | null
           created_at?: string
           data_aquisicao?: string | null
           id?: string
           localizacao?: string | null
+          marca?: string | null
+          modelo?: string | null
           nome: string
           numero_serie?: string | null
           observacoes?: string | null
@@ -42,10 +50,14 @@ export type Database = {
           valor?: number | null
         }
         Update: {
+          categoria?: string | null
+          codigo_barras?: string | null
           created_at?: string
           data_aquisicao?: string | null
           id?: string
           localizacao?: string | null
+          marca?: string | null
+          modelo?: string | null
           nome?: string
           numero_serie?: string | null
           observacoes?: string | null
