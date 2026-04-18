@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
+        console.log("✅ Usuário carregado do localStorage:", JSON.parse(savedUser).email);
       } catch (error) {
         console.error("❌ Erro ao carregar usuário:", error);
         localStorage.removeItem("user");
@@ -47,28 +48,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("app_users")
         .select("*")
         .eq("email", email)
-        .eq("password_hash", password)
-        .single();
+        .eq("password_hash", password);
 
       if (error) {
         console.error("❌ Erro na query:", error);
+        throw new Error("Erro ao fazer login");
+      }
+
+      if (!data || data.length === 0) {
+        console.error("❌ Usuário não encontrado ou senha incorreta");
         throw new Error("Email ou senha incorretos");
       }
 
-      if (!data) {
-        throw new Error("Usuário não encontrado");
-      }
+      const appUser = data[0];
 
-      if (!data.ativo) {
+      if (!appUser.ativo) {
+        console.warn("⚠️ Usuário inativo");
         throw new Error("Usuário inativo");
       }
 
       const userData: User = {
-        id: data.id,
-        email: data.email,
-        nome: data.nome,
-        role: data.role,
-        ativo: data.ativo,
+        id: appUser.id,
+        email: appUser.email,
+        nome: appUser.nome,
+        role: appUser.role,
+        ativo: appUser.ativo,
       };
 
       setUser(userData);
