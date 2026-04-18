@@ -9,7 +9,7 @@ export function useEquipamentos(filters?: { setor_id?: string; status?: string; 
       let query = supabase.from("equipamentos").select("*, setores(nome)").order("nome");
       if (filters?.setor_id) query = query.eq("setor_id", filters.setor_id);
       if (filters?.status) query = query.eq("status", filters.status);
-      if (filters?.search) query = query.or(`nome.ilike.%${filters.search}%,numero_serie.ilike.%${filters.search}%`);
+      if (filters?.search) query = query.or(`nome.ilike.%${filters.search}%,numero_serie.ilike.%${filters.search}%,codigo_barras.ilike.%${filters.search}%,marca.ilike.%${filters.search}%,modelo.ilike.%${filters.search}%`);
       const { data, error } = await query;
       if (error) throw error;
       return data;
@@ -17,14 +17,17 @@ export function useEquipamentos(filters?: { setor_id?: string; status?: string; 
   });
 }
 
+type EquipFields = {
+  nome?: string; numero_serie?: string; setor_id?: string; status?: string;
+  localizacao?: string; data_aquisicao?: string; valor?: number; observacoes?: string;
+  codigo_barras?: string; marca?: string; modelo?: string; categoria?: string;
+};
+
 export function useCreateEquipamento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: {
-      nome: string; numero_serie?: string; setor_id: string; status?: string;
-      localizacao?: string; data_aquisicao?: string; valor?: number; observacoes?: string;
-    }) => {
-      const { error } = await supabase.from("equipamentos").insert(data);
+    mutationFn: async (data: EquipFields & { nome: string; setor_id: string }) => {
+      const { error } = await supabase.from("equipamentos").insert(data as any);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipamentos"] }); toast.success("Equipamento criado!"); },
@@ -35,8 +38,8 @@ export function useCreateEquipamento() {
 export function useUpdateEquipamento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; nome?: string; numero_serie?: string; setor_id?: string; status?: string; localizacao?: string; data_aquisicao?: string; valor?: number; observacoes?: string }) => {
-      const { error } = await supabase.from("equipamentos").update(data).eq("id", id);
+    mutationFn: async ({ id, ...data }: { id: string } & EquipFields) => {
+      const { error } = await supabase.from("equipamentos").update(data as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipamentos"] }); toast.success("Equipamento atualizado!"); },
@@ -54,4 +57,17 @@ export function useDeleteEquipamento() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipamentos"] }); toast.success("Equipamento excluído!"); },
     onError: (e: any) => toast.error(e.message),
   });
+}
+
+export async function findEquipamentoByCode(code: string) {
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let q = supabase.from("equipamentos").select("*, setores(nome)");
+  if (uuidRe.test(code)) {
+    const { data } = await q.eq("id", code).maybeSingle();
+    if (data) return data;
+  }
+  const { data: byBar } = await supabase.from("equipamentos").select("*, setores(nome)").eq("codigo_barras", code).maybeSingle();
+  if (byBar) return byBar;
+  const { data: bySerie } = await supabase.from("equipamentos").select("*, setores(nome)").eq("numero_serie", code).maybeSingle();
+  return bySerie || null;
 }

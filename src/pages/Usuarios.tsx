@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSetores } from "@/hooks/useSetores";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,8 +16,10 @@ import { toast } from "sonner";
 
 export default function Usuarios() {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
   const { data: setores = [] } = useSetores();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<any>(null);
 
   const { data: users = [], isLoading } = useQuery({
@@ -33,11 +36,17 @@ export default function Usuarios() {
   });
 
   const [form, setForm] = useState({ nome: "", setor_id: "", role: "staff", ativo: true });
+  const [createForm, setCreateForm] = useState({ nome: "", email: "", password: "", setor_id: "", role: "staff" });
 
   const openEdit = (u: any) => {
     setEditProfile(u);
     setForm({ nome: u.nome, setor_id: u.setor_id || "", role: u.role, ativo: u.ativo });
     setDialogOpen(true);
+  };
+
+  const openCreate = () => {
+    setCreateForm({ nome: "", email: "", password: "", setor_id: "", role: "staff" });
+    setCreateOpen(true);
   };
 
   const updateMut = useMutation({
@@ -46,7 +55,6 @@ export default function Usuarios() {
       await supabase.from("profiles").update({
         nome: form.nome, setor_id: form.setor_id || null, ativo: form.ativo,
       }).eq("id", editProfile.id);
-
       if (editProfile.role_id) {
         await supabase.from("user_roles").update({ role: form.role as any }).eq("id", editProfile.role_id);
       } else {
@@ -61,11 +69,40 @@ export default function Usuarios() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const createMut = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          nome: createForm.nome,
+          email: createForm.email,
+          password: createForm.password,
+          setor_id: createForm.setor_id || null,
+          role: createForm.role,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("Usuário criado!");
+      setCreateOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao criar usuário"),
+  });
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold">Usuários</h2>
-        <p className="text-muted-foreground text-sm">{users.length} usuário(s)</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Usuários</h2>
+          <p className="text-muted-foreground text-sm">{users.length} usuário(s)</p>
+        </div>
+        {isAdmin && (
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="w-4 h-4 mr-1" />Novo Usuário
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -98,7 +135,7 @@ export default function Usuarios() {
                   </TableRow>
                 ))}
                 {users.length === 0 && !isLoading && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum usuário</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -106,6 +143,52 @@ export default function Usuarios() {
         </CardContent>
       </Card>
 
+      {/* Create */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Novo Usuário</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); createMut.mutate(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome *</Label>
+              <Input value={createForm.nome} onChange={(e) => setCreateForm((f) => ({ ...f, nome: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha *</Label>
+              <Input type="password" minLength={6} value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Setor</Label>
+              <Select value={createForm.setor_id} onValueChange={(v) => setCreateForm((f) => ({ ...f, setor_id: v === "none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role *</Label>
+              <Select value={createForm.role} onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "Criando..." : "Criar"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>

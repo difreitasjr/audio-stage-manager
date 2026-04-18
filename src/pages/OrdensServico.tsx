@@ -15,7 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, RotateCcw } from "lucide-react";
+import { Plus, Search, Eye, RotateCcw, ScanLine } from "lucide-react";
+import { ScannerDialog } from "@/components/ScannerDialog";
+import { findEquipamentoByCode } from "@/hooks/useEquipamentos";
+import { toast } from "sonner";
 
 const statusLabels: Record<string, string> = {
   aberta: "Aberta", em_andamento: "Em Andamento", retornado: "Retornado", atrasada: "Atrasada",
@@ -31,6 +34,16 @@ export default function OrdensServico() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewOrdem, setViewOrdem] = useState<any>(null);
   const [selectedEquips, setSelectedEquips] = useState<string[]>([]);
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  const handleScanAdd = async (code: string) => {
+    const eq = await findEquipamentoByCode(code);
+    if (!eq) return toast.error(`Não encontrado: ${code}`);
+    if (eq.status !== "disponivel") return toast.error(`${eq.nome} não está disponível`);
+    if (form.setor_id && eq.setor_id !== form.setor_id) return toast.error(`${eq.nome} é de outro setor`);
+    setSelectedEquips((prev) => prev.includes(eq.id) ? prev : [...prev, eq.id]);
+    toast.success(`Adicionado: ${eq.nome}`);
+  };
 
   const activeFilters = {
     status: filters.status || undefined,
@@ -279,7 +292,12 @@ export default function OrdensServico() {
 
             {/* Equipment selection */}
             <div className="space-y-2">
-              <Label>Equipamentos Disponíveis</Label>
+              <div className="flex items-center justify-between">
+                <Label>Equipamentos Disponíveis</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setScannerOpen(true)}>
+                  <ScanLine className="w-4 h-4 mr-1" />Escanear
+                </Button>
+              </div>
               <div className="border rounded-lg max-h-48 overflow-y-auto p-3 space-y-2">
                 {filteredEquips.length === 0 && <p className="text-sm text-muted-foreground">Nenhum equipamento disponível neste setor</p>}
                 {filteredEquips.map((e: any) => (
@@ -318,6 +336,8 @@ export default function OrdensServico() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onScan={handleScanAdd} title="Escanear para adicionar à OS" />
     </div>
   );
 }
