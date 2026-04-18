@@ -3,9 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Package, ClipboardList, ArrowLeftRight,
-  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown,
+  Wrench, Users, BarChart3, LogOut, Menu, X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const adminNav = [
@@ -27,7 +26,7 @@ const staffNav = [
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,20 +41,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-foreground/20 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 bg-foreground/20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform lg:translate-x-0 lg:static",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform lg:translate-x-0 lg:static",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
         <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border">
           <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
             <Package className="w-4 h-4 text-sidebar-primary-foreground" />
           </div>
-          <span className="font-bold text-lg text-sidebar-primary-foreground">AV Control</span>
-          <button className="ml-auto lg:hidden text-sidebar-muted" onClick={() => setSidebarOpen(false)}>
+          <span className="font-bold text-lg text-sidebar-primary-foreground">
+            AV Control
+          </span>
+          <button
+            className="ml-auto lg:hidden text-sidebar-muted"
+            onClick={() => setSidebarOpen(false)}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -85,13 +94,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-sm font-semibold text-sidebar-primary">
-              {profile?.nome?.charAt(0)?.toUpperCase() || "U"}
+              {user?.nome?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{profile?.nome || "Usuário"}</p>
-              <p className="text-xs text-sidebar-muted capitalize">{isAdmin ? "Admin" : "Staff"}</p>
+              <p className="text-sm font-medium truncate">{user?.nome || "Usuário"}</p>
+              <p className="text-xs text-sidebar-muted capitalize">
+                {isAdmin ? "🔴 Admin" : "🟢 Staff"}
+              </p>
             </div>
-            <button onClick={handleSignOut} className="text-sidebar-muted hover:text-sidebar-foreground">
+            <button
+              onClick={handleSignOut}
+              className="text-sidebar-muted hover:text-sidebar-foreground"
+            >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -101,16 +115,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b flex items-center px-4 lg:px-6 bg-card">
-          <button className="lg:hidden mr-3" onClick={() => setSidebarOpen(true)}>
+          <button
+            className="lg:hidden mr-3"
+            onClick={() => setSidebarOpen(true)}
+          >
             <Menu className="w-6 h-6 text-foreground" />
           </button>
           <h1 className="text-lg font-semibold text-foreground">
-            {nav.find(n => n.to === location.pathname)?.label || "AV Control"}
+            {nav.find((n) => n.to === location.pathname)?.label || "AV Control"}
           </h1>
         </header>
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );
