@@ -16,6 +16,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, nome: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -77,9 +78,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      console.log("✅ Login bem-sucedido:", userData.email);
+      console.log("✅ Login bem-sucedido:", userData.email, "Role:", userData.role);
     } catch (error) {
       console.error("❌ Erro ao fazer login:", error);
+      throw error;
+    }
+  };
+
+  const signUp = async (email: string, password: string, nome: string) => {
+    try {
+      console.log("📝 Tentando cadastro:", email);
+
+      // Inserir novo usuário na tabela app_users
+      const { data, error } = await supabase
+        .from("app_users")
+        .insert([
+          {
+            email,
+            password_hash: password, // ⚠️ IMPORTANTE: usar hash em produção!
+            nome,
+            role: "staff", // Novos usuários começam como staff
+            ativo: true,
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("❌ Erro no cadastro:", error);
+        throw new Error("Erro ao fazer cadastro");
+      }
+
+      console.log("✅ Cadastro realizado com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao cadastrar:", error);
       throw error;
     }
   };
@@ -97,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === "admin",
         loading,
         signIn,
+        signUp,
         signOut,
       }}
     >

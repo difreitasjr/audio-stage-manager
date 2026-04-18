@@ -49,11 +49,27 @@ export default function Login() {
         setName("");
       } else {
         await signIn(email, password);
-        navigate("/dashboard");
+        
+        // Obter o usuário do localStorage após login
+        const savedUser = localStorage.getItem("user");
+        if (savedUser) {
+          const userData = JSON.parse(savedUser);
+          console.log("👤 Usuário logado como:", userData.role);
+          
+          // Redirecionar baseado na role
+          if (userData.role === "admin") {
+            console.log("🔴 Redirecionando para /admin");
+            navigate("/admin");
+          } else {
+            console.log("🟢 Redirecionando para /dashboard");
+            navigate("/dashboard");
+          }
+        }
+        
         toast.success("Login realizado com sucesso!");
       }
     } catch (err: any) {
-      toast.error(err.message || isSignUp ? "Erro ao cadastrar" : "Erro ao fazer login");
+      toast.error(err.message || (isSignUp ? "Erro ao cadastrar" : "Erro ao fazer login"));
     } finally {
       setLoading(false);
     }
