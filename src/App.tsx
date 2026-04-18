@@ -18,17 +18,17 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { session, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
-  if (!session) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
   return <AppLayout>{children}</AppLayout>;
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { user, loading } = useAuth();
   if (loading) return null;
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
