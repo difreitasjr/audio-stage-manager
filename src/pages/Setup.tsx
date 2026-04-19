@@ -10,9 +10,9 @@ import { Package, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Setup() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("admin@teste.com");
+  const [password, setPassword] = useState("123456");
+  const [nome, setNome] = useState("Administrador");
   const [loading, setLoading] = useState(false);
   const [hasAdmin, setHasAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
@@ -25,13 +25,12 @@ export default function Setup() {
 
   const checkIfAdminExists = async () => {
     try {
-      const { data } = await supabase
+      const { count } = await supabase
         .from("user_roles")
-        .select("id")
-        .eq("role", "admin")
-        .limit(1);
+        .select("id", { count: "exact" })
+        .eq("role", "admin");
 
-      if (data && data.length > 0) {
+      if (count && count > 0) {
         setHasAdmin(true);
         navigate("/login", { replace: true });
       }
@@ -58,8 +57,8 @@ export default function Setup() {
     setLoading(true);
     try {
       await signUp(email, password, nome);
-      toast.success("Admin criado com sucesso! Faça login agora.");
-      navigate("/login", { replace: true });
+      toast.success("✅ Admin criado com sucesso! Faça login agora.");
+      setTimeout(() => navigate("/login", { replace: true }), 1000);
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar admin");
     } finally {
@@ -87,23 +86,22 @@ export default function Setup() {
             <Package className="w-6 h-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">AV Control</CardTitle>
-          <CardDescription>Configuração Inicial do Sistema</CardDescription>
+          <CardDescription>Configuração Inicial</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2">
             <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-blue-800">
-              Sistema vazio. Crie a conta de administrador para começar.
+              Crie a conta de administrador para começar.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome Completo *</Label>
+              <Label htmlFor="nome">Nome Completo</Label>
               <Input
                 id="nome"
                 type="text"
-                placeholder="Seu nome"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
@@ -111,11 +109,10 @@ export default function Setup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -123,11 +120,10 @@ export default function Setup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Senha (mín. 6 caracteres) *</Label>
+              <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

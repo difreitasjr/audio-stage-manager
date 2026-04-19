@@ -17,7 +17,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, nome: string) => Promise<{ id: string }>;
+  signUp: (email: string, password: string, nome: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,43 +32,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        console.log("✅ Usuário carregado:", parsedUser.email);
-      } catch (error) {
-        console.error("❌ Erro ao carregar:", error);
+        setUser(JSON.parse(savedUser));
+      } catch {
         localStorage.removeItem("user");
       }
     }
     setLoading(false);
   }, []);
 
+  const signUp = async (email: string, password: string, nome: string) => {
+    try {
+      // Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      const userId = authData.user!.id;
+
+      // Verificar se é primeiro admin
+      const { data: adminCount } = await supabase
+        .from("user_roles")
+        .select("id", { count: "exact", head: true });
+
+      const isFirstAdmin = !adminCount || adminCount.length === 0;
+      const role = isFirstAdmin ? "admin" : "staff";
+
+      // Inserir em profiles
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({ id: userId, email, nome, ativo: true });
+
+      if (profileError) throw profileError;
+
+      // Inserir em user_roles
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role });
+
+      if (roleError) throw roleError;
+
+      console.log("✅ Admin criado:", email, "Role:", role);
+    } catch (error) {
+      console.error("❌ Erro ao criar:", error);
+      throw error;
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
-      console.log("🔐 Login:", email);
-
-      const { data, error } = await supabase
+      // Buscar usuário em profiles
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, email, nome, ativo")
+        .select("id, nome, ativo")
         .eq("email", email)
         .single();
 
-      if (error || !data) {
-        throw new Error("Email ou senha incorretos");
+      if (profileError || !profile) {
+        throw new Error("Usuário não encontrado");
       }
 
-      const { data: roleData } = await supabase
+      if (!profile.ativo) {
+        throw new Error("Usuário inativo");
+      }
+
+      // Buscar role
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", data.id)
+        .eq("user_id", profile.id)
         .single();
 
+      if (roleError || !roleData) {
+        throw new Error("Erro ao verificar permissões");
+      }
+
       const userData: User = {
-        id: data.id,
-        email: data.email,
-        nome: data.nome,
-        role: (roleData?.role || "staff") as AppRole,
-        ativo: data.ativo,
+        id: profile.id,
+        email,
+        nome: profile.nome,
+        role: roleData.role as AppRole,
+        ativo: profile.ativo,
       };
 
       setUser(userData);
@@ -79,54 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate(userData.role === "admin" ? "/admin" : "/dashboard", { replace: true });
       }, 100);
     } catch (error) {
-      console.error("❌ Erro login:", error);
-      throw error;
-    }
-  };
-
-  const signUp = async (email: string, password: string, nome: string) => {
-    try {
-      console.log("📝 Criando usuário:", email);
-
-      // Verificar se é primeiro admin
-      const { data: admins } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("role", "admin");
-
-      const isFirstAdmin = !admins || admins.length === 0;
-
-      // Criar usuário no Auth
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { nome },
-        },
-      });
-
-      if (error) throw error;
-
-      const userId = data.user!.id;
-
-      // Inserir em profiles
-      await supabase.from("profiles").insert({
-        id: userId,
-        email,
-        nome,
-        ativo: true,
-      });
-
-      // Inserir em user_roles (admin se for primeiro, senão staff)
-      await supabase.from("user_roles").insert({
-        user_id: userId,
-        role: isFirstAdmin ? "admin" : "staff",
-      });
-
-      console.log("✅ Usuário criado:", isFirstAdmin ? "ADMIN" : "STAFF");
-      return { id: userId };
-    } catch (error) {
-      console.error("❌ Erro signup:", error);
+      console.error("❌ Erro ao fazer login:", error);
       throw error;
     }
   };
