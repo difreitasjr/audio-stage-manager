@@ -101,14 +101,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("📝 Tentando cadastro:", email);
 
-      // Chamar edge function para criar usuário
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        `${supabaseUrl}/functions/v1/create-user`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${supabaseAnonKey}`,
           },
           body: JSON.stringify({
             email,
@@ -120,7 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (!response.ok) {
-        throw new Error("Erro ao criar usuário");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao criar usuário");
       }
 
       const data = await response.json();
