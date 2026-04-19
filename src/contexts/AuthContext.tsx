@@ -34,9 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
-        console.log("✅ Usuário carregado do localStorage:", parsedUser.email);
+        console.log("✅ Usuário carregado:", parsedUser.email);
       } catch (error) {
-        console.error("❌ Erro ao carregar usuário:", error);
+        console.error("❌ Erro ao carregar:", error);
         localStorage.removeItem("user");
       }
     }
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log("🔐 Tentando login:", email);
+      console.log("🔐 Login:", email);
 
       const { data, error } = await supabase
         .from("profiles")
@@ -54,83 +54,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error || !data) {
-        console.error("❌ Usuário não encontrado");
         throw new Error("Email ou senha incorretos");
       }
 
-      // Buscar role do usuário
-      const { data: roleData, error: roleError } = await supabase
+      const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.id)
         .single();
 
-      if (roleError || !roleData) {
-        console.error("❌ Role não encontrado");
-        throw new Error("Erro ao verificar permissões");
-      }
-
       const userData: User = {
         id: data.id,
         email: data.email,
         nome: data.nome,
-        role: roleData.role as AppRole,
+        role: (roleData?.role || "staff") as AppRole,
         ativo: data.ativo,
       };
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      console.log("✅ Login bem-sucedido:", userData.email, "Role:", userData.role);
+      console.log("✅ Login OK:", userData.role);
 
       setTimeout(() => {
-        if (userData.role === "admin") {
-          console.log("🔴 Redirecionando para /admin");
-          navigate("/admin", { replace: true });
-        } else {
-          console.log("🟢 Redirecionando para /dashboard");
-          navigate("/dashboard", { replace: true });
-        }
+        navigate(userData.role === "admin" ? "/admin" : "/dashboard", { replace: true });
       }, 100);
     } catch (error) {
-      console.error("❌ Erro ao fazer login:", error);
+      console.error("❌ Erro login:", error);
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, nome: string) => {
     try {
-      console.log("📝 Tentando cadastro:", email);
+      console.log("📝 Criando usuário:", email);
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Verificar se é primeiro admin
+      const { data: admins } = await supabase
+        .from("user_roles")
+        .select("id")
+        .eq("role", "admin");
 
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/create-user`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseAnonKey}`,
-          },
-          body: JSON.stringify({
-            email,
-            password,
-            nome,
-            role: "staff",
-          }),
-        }
-      );
+      const isFirstAdmin = !admins || admins.length === 0;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao criar usuário");
-      }
+      // Criar usuário no Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { nome },
+        },
+      });
 
-      const data = await response.json();
-      console.log("✅ Cadastro realizado com sucesso!");
-      return data;
+      if (error) throw error;
+
+      const userId = data.user!.id;
+
+      // Inserir em profiles
+      await supabase.from("profiles").insert({
+        id: userId,
+        email,
+        nome,
+        ativo: true,
+      });
+
+      // Inserir em user_roles (admin se for primeiro, senão staff)
+      await supabase.from("user_roles").insert({
+        user_id: userId,
+        role: isFirstAdmin ? "admin" : "staff",
+      });
+
+      console.log("✅ Usuário criado:", isFirstAdmin ? "ADMIN" : "STAFF");
+      return { id: userId };
     } catch (error) {
-      console.error("❌ Erro ao cadastrar:", error);
+      console.error("❌ Erro signup:", error);
       throw error;
     }
   };
@@ -138,7 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setUser(null);
     localStorage.removeItem("user");
-    console.log("👋 Logout realizado");
     navigate("/login", { replace: true });
   };
 
