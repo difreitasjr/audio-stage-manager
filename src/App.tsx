@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
+import Setup from "@/pages/Setup";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Equipamentos from "@/pages/Equipamentos";
@@ -40,10 +41,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/setup" element={<Setup />} />
             <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute adminOnly><Dashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
             <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
             <Route path="/movimentacao" element={<ProtectedRoute><Movimentacao /></ProtectedRoute>} />

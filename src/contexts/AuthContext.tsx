@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 type AppRole = "admin" | "staff";
@@ -16,7 +17,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, nome: string) => Promise<void>;
+  signUp: (email: string, password: string, nome: string) => Promise<{ id: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -25,14 +26,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Carregar usuário do localStorage
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
-        console.log("✅ Usuário carregado do localStorage:", JSON.parse(savedUser).email);
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        console.log("✅ Usuário carregado do localStorage:", parsedUser.email);
       } catch (error) {
         console.error("❌ Erro ao carregar usuário:", error);
         localStorage.removeItem("user");
@@ -46,39 +48,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("🔐 Tentando login:", email);
 
       const { data, error } = await supabase
-        .from("app_users")
-        .select("*")
+        .from("profiles")
+        .select("id, email, nome, ativo")
         .eq("email", email)
-        .eq("password_hash", password);
+        .single();
 
-      if (error) {
-        console.error("❌ Erro na query:", error);
-        throw new Error("Erro ao fazer login");
-      }
-
-      if (!data || data.length === 0) {
-        console.error("❌ Usuário não encontrado ou senha incorreta");
+      if (error || !data) {
+        console.error("❌ Usuário não encontrado");
         throw new Error("Email ou senha incorretos");
       }
 
-      const appUser = data[0];
+      // Buscar role do usuário
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.id)
+        .single();
 
-      if (!appUser.ativo) {
-        console.warn("⚠️ Usuário inativo");
-        throw new Error("Usuário inativo");
+      if (roleError || !roleData) {
+        console.error("❌ Role não encontrado");
+        throw new Error("Erro ao verificar permissões");
       }
 
       const userData: User = {
-        id: appUser.id,
-        email: appUser.email,
-        nome: appUser.nome,
-        role: appUser.role,
-        ativo: appUser.ativo,
+        id: data.id,
+        email: data.email,
+        nome: data.nome,
+        role: roleData.role as AppRole,
+        ativo: data.ativo,
       };
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
       console.log("✅ Login bem-sucedido:", userData.email, "Role:", userData.role);
+
+      setTimeout(() => {
+        if (userData.role === "admin") {
+          console.log("🔴 Redirecionando para /admin");
+          navigate("/admin", { replace: true });
+        } else {
+          console.log("🟢 Redirecionando para /dashboard");
+          navigate("/dashboard", { replace: true });
+        }
+      }, 100);
     } catch (error) {
       console.error("❌ Erro ao fazer login:", error);
       throw error;
@@ -89,26 +101,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("📝 Tentando cadastro:", email);
 
-      // Inserir novo usuário na tabela app_users
-      const { data, error } = await supabase
-        .from("app_users")
-        .insert([
-          {
-            email,
-            password_hash: password, // ⚠️ IMPORTANTE: usar hash em produção!
-            nome,
-            role: "staff", // Novos usuários começam como staff
-            ativo: true,
+      // Chamar edge function para criar usuário
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
-        ])
-        .select();
+          body: JSON.stringify({
+            email,
+            password,
+            nome,
+            role: "staff",
+          }),
+        }
+      );
 
-      if (error) {
-        console.error("❌ Erro no cadastro:", error);
-        throw new Error("Erro ao fazer cadastro");
+      if (!response.ok) {
+        throw new Error("Erro ao criar usuário");
       }
 
+      const data = await response.json();
       console.log("✅ Cadastro realizado com sucesso!");
+      return data;
     } catch (error) {
       console.error("❌ Erro ao cadastrar:", error);
       throw error;
@@ -119,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem("user");
     console.log("👋 Logout realizado");
+    navigate("/login", { replace: true });
   };
 
   return (
