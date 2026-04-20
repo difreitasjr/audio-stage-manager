@@ -173,7 +173,7 @@ export default function OrdensServico() {
                     <TableCell>{o.cliente}</TableCell>
                     <TableCell>{o.responsavel_nome || "—"}</TableCell>
                     <TableCell>{o.setores?.nome}</TableCell>
-                    <TableCell>{o.ordem_equipamentos?.length || 0}</TableCell>
+                    <TableCell>{(o.ordem_equipamentos || []).reduce((s: number, oe: any) => s + (oe.quantidade || 1), 0)}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={statusColors[o.status]}>{statusLabels[o.status]}</Badge>
                     </TableCell>
