@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Power, KeyRound } from "lucide-react";
@@ -23,6 +24,7 @@ export default function Usuarios() {
   const [editProfile, setEditProfile] = useState<any>(null);
   const [resetUser, setResetUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [confirmDeactivate, setConfirmDeactivate] = useState<any>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -166,7 +168,10 @@ export default function Usuarios() {
                         variant="ghost"
                         size="icon"
                         title={u.ativo ? "Desativar" : "Ativar"}
-                        onClick={() => toggleAtivoMut.mutate(u)}
+                        onClick={() => {
+                          if (u.ativo) setConfirmDeactivate(u);
+                          else toggleAtivoMut.mutate(u);
+                        }}
                         disabled={toggleAtivoMut.isPending}
                       >
                         <Power className={`w-4 h-4 ${u.ativo ? "text-green-600" : "text-muted-foreground"}`} />
@@ -293,6 +298,28 @@ export default function Usuarios() {
           </form>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!confirmDeactivate} onOpenChange={(o) => { if (!o) setConfirmDeactivate(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDeactivate?.nome} não poderá mais fazer login até ser reativado. Confirma?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const u = confirmDeactivate;
+                setConfirmDeactivate(null);
+                if (u) toggleAtivoMut.mutate(u);
+              }}
+            >
+              Desativar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
