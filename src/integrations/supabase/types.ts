@@ -186,6 +186,7 @@ export type Database = {
           id: string
           observacoes: string | null
           ordem_id: string
+          quantidade: number
         }
         Insert: {
           created_at?: string
@@ -193,6 +194,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           ordem_id: string
+          quantidade?: number
         }
         Update: {
           created_at?: string
@@ -200,6 +202,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           ordem_id?: string
+          quantidade?: number
         }
         Relationships: [
           {
