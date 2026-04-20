@@ -100,8 +100,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    if (data.user) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("ativo")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+      if (prof && prof.ativo === false) {
+        await supabase.auth.signOut();
+        throw new Error("Usuário inativo. Contate o administrador.");
+      }
+    }
   };
 
   const signUp = async (email: string, password: string, nome: string) => {
