@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, RotateCcw, ScanLine } from "lucide-react";
+import { Plus, Search, Eye, RotateCcw, ScanLine, FileDown } from "lucide-react";
 import { ScannerDialog } from "@/components/ScannerDialog";
 import { findEquipamentoByCode } from "@/hooks/useEquipamentos";
+import { gerarOrdemPdf } from "@/lib/ordemPdf";
 import { toast } from "sonner";
 
 const statusLabels: Record<string, string> = {
