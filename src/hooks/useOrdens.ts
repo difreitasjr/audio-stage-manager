@@ -7,7 +7,7 @@ export function useOrdens(filters?: { status?: string; setor_id?: string; search
     queryKey: ["ordens", filters],
     queryFn: async () => {
       let query = supabase.from("ordens_servico")
-        .select("*, setores(nome), ordem_equipamentos(id, equipamento_id, equipamentos(nome))")
+        .select("*, setores(nome), ordem_equipamentos(id, equipamento_id, quantidade, equipamentos(nome, numero_serie))")
         .order("created_at", { ascending: false });
       if (filters?.status) query = query.eq("status", filters.status);
       if (filters?.setor_id) query = query.eq("setor_id", filters.setor_id);
@@ -29,20 +29,24 @@ export function useCreateOrdem() {
         descricao_servico?: string; observacoes?: string;
         checklist_funciona?: boolean; checklist_acessorios?: boolean; checklist_completo?: boolean;
       };
-      equipamento_ids: string[];
+      itens: { equipamento_id: string; quantidade: number }[];
     }) => {
       const { data: ordem, error: ordemError } = await supabase
         .from("ordens_servico").insert(data.ordem as any).select().single();
       if (ordemError) throw ordemError;
 
-      if (data.equipamento_ids.length > 0) {
-        const items = data.equipamento_ids.map(eid => ({ ordem_id: ordem.id, equipamento_id: eid }));
+      if (data.itens.length > 0) {
+        const items = data.itens.map(it => ({
+          ordem_id: ordem.id,
+          equipamento_id: it.equipamento_id,
+          quantidade: it.quantidade,
+        }));
         const { error: itemError } = await supabase.from("ordem_equipamentos").insert(items);
         if (itemError) throw itemError;
 
         await supabase.from("equipamentos")
           .update({ status: "em_uso" })
-          .in("id", data.equipamento_ids);
+          .in("id", data.itens.map(i => i.equipamento_id));
       }
       return ordem;
     },

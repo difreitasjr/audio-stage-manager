@@ -65,6 +65,7 @@ export function gerarOrdemPdf(ordem: any) {
   // Equipamentos
   const equipRows = (ordem.ordem_equipamentos || []).map((oe: any, i: number) => [
     i + 1,
+    oe.quantidade || 1,
     oe.equipamentos?.nome || oe.equipamento_id,
   ]);
   autoTable(doc, {
@@ -72,8 +73,9 @@ export function gerarOrdemPdf(ordem: any) {
     theme: "striped",
     styles: { fontSize: 9, cellPadding: 2 },
     headStyles: { fillColor: [37, 99, 235] },
-    head: [["#", "Equipamento"]],
-    body: equipRows.length ? equipRows : [["—", "Nenhum equipamento"]],
+    columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 18, halign: "center" } },
+    head: [["#", "Qtd", "Equipamento"]],
+    body: equipRows.length ? equipRows : [["—", "—", "Nenhum equipamento"]],
   });
   y = (doc as any).lastAutoTable.finalY + 6;
 
