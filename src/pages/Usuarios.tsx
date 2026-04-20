@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Power } from "lucide-react";
+import { Plus, Pencil, Power, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Usuarios() {
@@ -21,6 +21,8 @@ export default function Usuarios() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<any>(null);
+  const [resetUser, setResetUser] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -104,6 +106,23 @@ export default function Usuarios() {
     onError: (e: any) => toast.error(e.message || "Erro ao criar usuário"),
   });
 
+  const resetPasswordMut = useMutation({
+    mutationFn: async () => {
+      if (!resetUser) return;
+      const { data, error } = await supabase.functions.invoke("reset-user-password", {
+        body: { user_id: resetUser.user_id, password: newPassword },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+    },
+    onSuccess: () => {
+      toast.success("Senha redefinida!");
+      setResetUser(null);
+      setNewPassword("");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao redefinir senha"),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -151,6 +170,14 @@ export default function Usuarios() {
                         disabled={toggleAtivoMut.isPending}
                       >
                         <Power className={`w-4 h-4 ${u.ativo ? "text-green-600" : "text-muted-foreground"}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Redefinir senha"
+                        onClick={() => { setResetUser(u); setNewPassword(""); }}
+                      >
+                        <KeyRound className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="w-4 h-4" /></Button>
                     </TableCell>
@@ -228,7 +255,23 @@ export default function Usuarios() {
                   {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
+      {/* Reset Password */}
+      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) { setResetUser(null); setNewPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Redefinir senha — {resetUser?.nome}</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; } resetPasswordMut.mutate(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nova senha *</Label>
+              <Input type="password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
             </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => { setResetUser(null); setNewPassword(""); }}>Cancelar</Button>
+              <Button type="submit" disabled={resetPasswordMut.isPending}>{resetPasswordMut.isPending ? "Salvando..." : "Redefinir"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
             <div className="space-y-2">
               <Label>Role</Label>
               <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
