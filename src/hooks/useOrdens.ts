@@ -7,7 +7,7 @@ export function useOrdens(filters?: { status?: string; setor_id?: string; search
     queryKey: ["ordens", filters],
     queryFn: async () => {
       let query = supabase.from("ordens_servico")
-        .select("*, setores(nome), ordem_equipamentos(id, equipamento_id, equipamentos(nome))")
+        .select("*, setores(nome), ordem_equipamentos(id, equipamento_id, quantidade, equipamentos(nome, numero_serie))")
         .order("created_at", { ascending: false });
       if (filters?.status) query = query.eq("status", filters.status);
       if (filters?.setor_id) query = query.eq("setor_id", filters.setor_id);
