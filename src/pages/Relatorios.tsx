@@ -27,7 +27,12 @@ export default function Relatorios() {
   });
 
   const exportCSV = (name: string, headers: string[], rows: string[][]) => {
-    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    const escape = (v: any) => {
+      let s = String(v ?? "");
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const csv = [headers, ...rows].map(r => r.map(escape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `${name}.csv`; a.click();
