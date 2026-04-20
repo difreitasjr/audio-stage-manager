@@ -3,10 +3,30 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Package, ClipboardList, ArrowLeftRight,
-  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown,
+  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+
+async function forceRefresh() {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch {
+    // ignore
+  }
+  // bypass HTTP cache
+  const url = new URL(window.location.href);
+  url.searchParams.set("_v", Date.now().toString());
+  window.location.replace(url.toString());
+}
 
 const adminNav = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -107,6 +127,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <h1 className="text-lg font-semibold text-foreground">
             {nav.find(n => n.to === location.pathname)?.label || "AV Control"}
           </h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto gap-2"
+            onClick={() => {
+              toast({ title: "Atualizando...", description: "Carregando a versão mais recente." });
+              forceRefresh();
+            }}
+            title="Forçar atualização (limpa cache)"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline">Atualizar</span>
+          </Button>
         </header>
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           {children}
