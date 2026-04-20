@@ -1,51 +1,45 @@
 
-## O que vou implementar
+## Diagnóstico
 
-### 1. Admin cadastra novos usuários
-- Botão "Novo Usuário" em `/usuarios` (somente admin)
-- Formulário: nome, email, senha, setor, role (admin/staff)
-- Edge Function `create-user` usando `SUPABASE_SERVICE_ROLE_KEY`:
-  - Valida que quem chama é admin (`has_role`)
-  - Cria usuário via `auth.admin.createUser` com `email_confirm: true`
-  - Atualiza `profiles.setor_id` e insere em `user_roles`
+Verifiquei o banco e o código:
 
-### 2. Adicionar equipamentos
-- O formulário já existe em `Equipamentos.tsx`. Vou revisar e garantir validação com zod e melhor UX.
+- `user_roles` está **vazio** → ninguém tem role `admin` → `isAdmin=false` sempre → dashboard nunca mostra a seção admin.
+- A função `handle_new_user` cria o `profile` mas **não tem trigger ativo** (`<db-triggers>` mostra "There are no triggers"), e também não insere role.
+- `Login.tsx` ainda mostra "Cadastre-se aqui" — o signUp público entra direto no dashboard porque auto-confirm está ligado, mas o usuário fica sem role/setor → tela vazia.
+- Não existe forma de criar o primeiro admin (página Usuários é admin-only → catch-22).
 
-### 3. Novos campos de equipamento
-- Migração ALTER TABLE `equipamentos`:
-  - `codigo_barras text` (lido pelo scanner 1D)
-  - `marca text`, `modelo text`, `categoria text`
-  - QR usa o próprio `id` como payload (não precisa coluna)
-- Atualizar formulário e tabela para exibir/editar esses campos
-- Botão "Imprimir etiqueta" mostra QR code (lib `qrcode.react`) com nome + número de série
+## Correções
 
-### 4. Leitor de QR code e código de barras
-- Lib: `html5-qrcode` (suporta QR + EAN/Code128, usa câmera)
-- Componente reutilizável `<ScannerDialog onScan={...}>`:
-  - Abre câmera em fullscreen (mobile-first)
-  - Campo de input manual como fallback
-- Dois pontos de uso:
-  - **Equipamentos**: botão "Escanear" → busca por `id` → `codigo_barras` → `numero_serie` → abre detalhes
-  - **Ordem de Serviço (form)**: botão "Escanear" → adiciona o equipamento à lista da OS
+### 1. Banco (migration)
+- Criar trigger `on_auth_user_created` em `auth.users` que executa `handle_new_user()` (hoje a função existe mas não é chamada).
+- Atualizar `handle_new_user()` para também:
+  - Inserir role `staff` por padrão em `user_roles`.
+  - Se ainda não existe nenhum admin no sistema, promover este novo usuário a `admin` (bootstrap do primeiro admin).
 
-### Detalhes técnicos
-- Migração SQL: `ALTER TABLE equipamentos ADD COLUMN codigo_barras text, ADD COLUMN marca text, ADD COLUMN modelo text, ADD COLUMN categoria text;` + índice em `codigo_barras`
-- Dependências novas: `html5-qrcode`, `qrcode.react`
-- Edge function `create-user` em `supabase/functions/create-user/index.ts` com CORS e validação zod
-- Atualizar `useEquipamentos.ts` para incluir os novos campos no insert/update
-- Atualizar `Usuarios.tsx` com dialog de criação chamando `supabase.functions.invoke('create-user', ...)`
+### 2. Login (`src/pages/Login.tsx`)
+- Remover o toggle "Cadastre-se aqui" e os campos de signup.
+- Tela fica só com email/senha + botão Entrar.
 
-### Estrutura
+### 3. AuthContext (`src/contexts/AuthContext.tsx`)
+- Limpar `signUp` (remover inserts manuais em `profiles`/`user_roles` — o trigger faz isso).
+- Garantir que `fetchUserData` é chamado após login e atualiza `role` corretamente.
+
+### 4. Bootstrap do primeiro admin
+- Criar rota pública `/setup` (`src/pages/Setup.tsx`) que:
+  - Detecta se `user_roles` está vazio (via consulta à edge function ou contagem pública).
+  - Mostra formulário (nome, email, senha) que cria o primeiro usuário — o trigger automaticamente o promove a admin.
+  - Se já existir admin, redireciona para `/login`.
+- Em `App.tsx`: adicionar rota `/setup` pública.
+
+### Fluxo final
 ```text
-Equipamentos page
-├── [+ Novo] (já existe, ampliado com novos campos)
-├── [Escanear] → ScannerDialog → abre equipamento
-└── linha → [Etiqueta QR] → modal imprimível
-
-Ordens de Serviço (form)
-└── [Escanear] → ScannerDialog → adiciona à lista
-
-Usuários page (admin)
-└── [+ Novo Usuário] → form → edge function create-user
+Sistema vazio → /setup → cria 1º admin → /login → /dashboard (admin completo)
+Admin logado → /usuarios → cria staffs com setor
+Staff logado → vê só seu setor
 ```
+
+### Resultado
+- Login não cadastra mais sozinho — só entra.
+- Primeiro acesso vai para `/setup` para criar admin.
+- Dashboard mostra todos os cards e seções administrativas.
+- Novos usuários criados pela tela Usuários recebem role/setor corretos via edge function `create-user` (já existe).
