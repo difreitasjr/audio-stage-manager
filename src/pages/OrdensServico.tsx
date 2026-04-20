@@ -168,6 +168,7 @@ export default function OrdensServico() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewOrdem(o)}><Eye className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => gerarOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
                         {o.status !== "retornado" && (
                           <Button variant="ghost" size="icon" onClick={() => retornarMut.mutate(o.id)}>
                             <RotateCcw className="w-4 h-4 text-green-600" />
