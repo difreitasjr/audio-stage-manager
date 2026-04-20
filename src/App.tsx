@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "@/pages/Login";
+import Setup from "@/pages/Setup";
 import Dashboard from "@/pages/Dashboard";
 import Equipamentos from "@/pages/Equipamentos";
 import OrdensServico from "@/pages/OrdensServico";
@@ -40,6 +41,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/setup" element={<Setup />} />
             <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
