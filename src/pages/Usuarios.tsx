@@ -255,7 +255,23 @@ export default function Usuarios() {
                   {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
+      {/* Reset Password */}
+      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) { setResetUser(null); setNewPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Redefinir senha — {resetUser?.nome}</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; } resetPasswordMut.mutate(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nova senha *</Label>
+              <Input type="password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
             </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => { setResetUser(null); setNewPassword(""); }}>Cancelar</Button>
+              <Button type="submit" disabled={resetPasswordMut.isPending}>{resetPasswordMut.isPending ? "Salvando..." : "Redefinir"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
             <div className="space-y-2">
               <Label>Role</Label>
               <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
