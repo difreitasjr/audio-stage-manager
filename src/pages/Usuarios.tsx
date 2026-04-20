@@ -106,6 +106,23 @@ export default function Usuarios() {
     onError: (e: any) => toast.error(e.message || "Erro ao criar usuário"),
   });
 
+  const resetPasswordMut = useMutation({
+    mutationFn: async () => {
+      if (!resetUser) return;
+      const { data, error } = await supabase.functions.invoke("reset-user-password", {
+        body: { user_id: resetUser.user_id, password: newPassword },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+    },
+    onSuccess: () => {
+      toast.success("Senha redefinida!");
+      setResetUser(null);
+      setNewPassword("");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao redefinir senha"),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -153,6 +170,14 @@ export default function Usuarios() {
                         disabled={toggleAtivoMut.isPending}
                       >
                         <Power className={`w-4 h-4 ${u.ativo ? "text-green-600" : "text-muted-foreground"}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Redefinir senha"
+                        onClick={() => { setResetUser(u); setNewPassword(""); }}
+                      >
+                        <KeyRound className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="w-4 h-4" /></Button>
                     </TableCell>
