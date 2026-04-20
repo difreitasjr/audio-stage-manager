@@ -20,13 +20,8 @@ export default function Setup() {
 
   useEffect(() => {
     (async () => {
-      // If any admin already exists, redirect (we can't read user_roles unauthenticated,
-      // so we use a head count via RPC fallback: try selecting; on empty result assume no admin).
-      const { count } = await supabase
-        .from("user_roles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "admin");
-      if ((count ?? 0) > 0) {
+      const { data: exists } = await supabase.rpc("admin_exists");
+      if (exists === true) {
         navigate("/login", { replace: true });
         return;
       }

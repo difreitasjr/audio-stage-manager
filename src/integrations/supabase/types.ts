@@ -375,6 +375,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_exists: { Args: never; Returns: boolean }
       get_user_setor: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
