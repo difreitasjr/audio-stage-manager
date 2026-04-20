@@ -26,14 +26,65 @@ const statusColors: Record<string, string> = {
 
 interface EquipForm {
   nome: string; numero_serie: string; setor_id: string; status: string;
-  localizacao: string; data_aquisicao: string; valor: string; observacoes: string;
+  observacoes: string;
   marca: string; modelo: string; categoria: string; codigo_barras: string;
 }
 
 const emptyForm: EquipForm = {
   nome: "", numero_serie: "", setor_id: "", status: "disponivel",
-  localizacao: "", data_aquisicao: "", valor: "", observacoes: "",
+  observacoes: "",
   marca: "", modelo: "", categoria: "", codigo_barras: "",
+};
+
+// Presets por setor: categoria -> lista de equipamentos comuns
+const PRESETS: Record<string, Record<string, string[]>> = {
+  som: {
+    "Microfone": ["Microfone Shure SM58", "Microfone Shure SM57", "Microfone Sennheiser e835", "Microfone Lapela", "Microfone Headset", "Microfone sem fio"],
+    "Mesa de Som": ["Mesa Behringer X32", "Mesa Yamaha MG", "Mesa Allen & Heath", "Mesa Soundcraft"],
+    "Caixa Acústica": ["Caixa Ativa JBL", "Caixa Passiva", "Subwoofer", "Monitor de Palco"],
+    "Amplificador": ["Amplificador de Potência", "Pré-amplificador"],
+    "Cabo": ["Cabo XLR", "Cabo P10", "Cabo de Força", "Multicabo"],
+    "Pedestal": ["Pedestal de Microfone", "Girafa", "Pedestal de Caixa"],
+    "Acessório": ["Direct Box", "Pop Filter", "Fone de Ouvido", "Sistema In-Ear"],
+  },
+  luz: {
+    "Refletor": ["Par LED", "Par 64", "Fresnel", "Elipsoidal", "Set Light"],
+    "Moving": ["Moving Beam", "Moving Wash", "Moving Spot"],
+    "Mesa de Luz": ["Mesa DMX", "Console Avolites", "Console GrandMA"],
+    "Máquina": ["Máquina de Fumaça", "Máquina de Neblina", "Máquina de Bolha"],
+    "Estrutura": ["Box Truss Q30", "Box Truss Q50", "Talha", "Sapata"],
+    "Cabo": ["Cabo DMX", "Cabo PP", "Multipinos"],
+    "Acessório": ["Strobo", "Laser", "Globo Espelhado"],
+  },
+  video: {
+    "Câmera": ["Câmera Sony", "Câmera Canon", "Câmera Blackmagic", "Câmera PTZ"],
+    "Lente": ["Lente 24-70mm", "Lente 70-200mm", "Lente Grande Angular"],
+    "Tripé": ["Tripé de Câmera", "Slider", "Estabilizador"],
+    "Monitor": ["Monitor de Referência", "Monitor de Campo"],
+    "Switcher": ["ATEM Mini", "ATEM Mini Pro", "Switcher Roland"],
+    "Iluminação": ["Painel LED", "Softbox", "Refletor de Vídeo"],
+    "Cabo": ["Cabo HDMI", "Cabo SDI", "Cabo de Energia"],
+    "Acessório": ["Cartão SD", "Bateria", "Carregador"],
+  },
+  streaming: {
+    "Computador": ["Notebook Streaming", "Desktop Streaming"],
+    "Encoder": ["Encoder de Vídeo", "Placa de Captura"],
+    "Switcher": ["ATEM Mini", "ATEM Mini Pro", "vMix Hardware"],
+    "Áudio": ["Interface de Áudio", "Mixer USB"],
+    "Conectividade": ["Roteador", "Modem 4G", "Switch de Rede"],
+    "Cabo": ["Cabo HDMI", "Cabo SDI", "Cabo de Rede"],
+    "Acessório": ["Webcam", "Headset", "Captura USB"],
+  },
+};
+
+// Normaliza nome do setor para chave do preset
+const setorKey = (nome: string): string => {
+  const n = nome.toLowerCase().trim();
+  if (n.includes("som")) return "som";
+  if (n.includes("luz")) return "luz";
+  if (n.includes("vídeo") || n.includes("video")) return "video";
+  if (n.includes("stream")) return "streaming";
+  return "";
 };
 
 export default function Equipamentos() {
@@ -62,8 +113,7 @@ export default function Equipamentos() {
     setEditId(e.id);
     setForm({
       nome: e.nome, numero_serie: e.numero_serie || "", setor_id: e.setor_id, status: e.status,
-      localizacao: e.localizacao || "", data_aquisicao: e.data_aquisicao || "",
-      valor: e.valor?.toString() || "", observacoes: e.observacoes || "",
+      observacoes: e.observacoes || "",
       marca: e.marca || "", modelo: e.modelo || "", categoria: e.categoria || "",
       codigo_barras: e.codigo_barras || "",
     });
@@ -79,9 +129,6 @@ export default function Equipamentos() {
     const payload = {
       nome: form.nome, numero_serie: form.numero_serie || undefined,
       setor_id: form.setor_id, status: form.status,
-      localizacao: form.localizacao || undefined,
-      data_aquisicao: form.data_aquisicao || undefined,
-      valor: form.valor ? parseFloat(form.valor) : undefined,
       observacoes: form.observacoes || undefined,
       marca: form.marca || undefined, modelo: form.modelo || undefined,
       categoria: form.categoria || undefined,
@@ -230,15 +277,70 @@ export default function Equipamentos() {
           <DialogHeader>
             <DialogTitle>{editId ? "Editar Equipamento" : "Novo Equipamento"}</DialogTitle>
           </DialogHeader>
+          {(() => {
+            const selectedSetor = setores.find((s: any) => s.id === form.setor_id);
+            const sKey = selectedSetor ? setorKey(selectedSetor.nome) : "";
+            const categoriasPreset = sKey && PRESETS[sKey] ? Object.keys(PRESETS[sKey]) : [];
+            const nomesPreset = sKey && form.categoria && PRESETS[sKey]?.[form.categoria] ? PRESETS[sKey][form.categoria] : [];
+            return (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} required />
+                <Label>Setor *</Label>
+                <Select value={form.setor_id} onValueChange={(v) => setForm((f) => ({ ...f, setor_id: v, categoria: "", nome: "" }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Ex: Microfone, Mesa de Som" />
+                {categoriasPreset.length > 0 ? (
+                  <>
+                    <Input
+                      list="categorias-list"
+                      value={form.categoria}
+                      onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, nome: "" }))}
+                      placeholder="Selecione ou digite"
+                    />
+                    <datalist id="categorias-list">
+                      {categoriasPreset.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Selecione setor primeiro" disabled={!form.setor_id} />
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Nome *</Label>
+                {nomesPreset.length > 0 ? (
+                  <>
+                    <Input
+                      list="nomes-list"
+                      value={form.nome}
+                      onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                      placeholder="Selecione ou digite"
+                      required
+                    />
+                    <datalist id="nomes-list">
+                      {nomesPreset.map((n) => <option key={n} value={n} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} required placeholder={form.setor_id ? "Digite o nome" : "Selecione setor primeiro"} />
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -261,40 +363,6 @@ export default function Equipamentos() {
                 <Input value={form.codigo_barras} onChange={(e) => setForm((f) => ({ ...f, codigo_barras: e.target.value }))} placeholder="EAN/Code128" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Setor *</Label>
-                <Select value={form.setor_id} onValueChange={(v) => setForm((f) => ({ ...f, setor_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Localização</Label>
-              <Input value={form.localizacao} onChange={(e) => setForm((f) => ({ ...f, localizacao: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input type="number" step="0.01" value={form.valor} onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Data Aquisição</Label>
-                <Input type="date" value={form.data_aquisicao} onChange={(e) => setForm((f) => ({ ...f, data_aquisicao: e.target.value }))} />
-              </div>
-            </div>
             <div className="space-y-2">
               <Label>Observações</Label>
               <Textarea value={form.observacoes} onChange={(e) => setForm((f) => ({ ...f, observacoes: e.target.value }))} rows={3} />
@@ -306,6 +374,8 @@ export default function Equipamentos() {
               </Button>
             </div>
           </form>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
