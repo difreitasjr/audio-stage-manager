@@ -57,7 +57,7 @@ export default function OrdensServico() {
     search: filters.search || undefined,
   };
   const { data: ordens = [], isLoading } = useOrdens(activeFilters);
-  const { data: equipamentosDisp = [] } = useEquipamentos({ status: "disponivel" });
+  const { data: equipamentosDisp = [] } = useEquipamentos();
   const { data: setores = [] } = useSetores();
 
   const createMut = useCreateOrdem();
