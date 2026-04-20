@@ -7,11 +7,11 @@ export function useOrdens(filters?: { status?: string; setor_id?: string; search
     queryKey: ["ordens", filters],
     queryFn: async () => {
       let query = supabase.from("ordens_servico")
-        .select("*, setores(nome), profiles!ordens_servico_responsavel_id_fkey(nome), ordem_equipamentos(id, equipamento_id, equipamentos(nome))")
+        .select("*, setores(nome), ordem_equipamentos(id, equipamento_id, equipamentos(nome))")
         .order("created_at", { ascending: false });
       if (filters?.status) query = query.eq("status", filters.status);
       if (filters?.setor_id) query = query.eq("setor_id", filters.setor_id);
-      if (filters?.search) query = query.or(`cliente.ilike.%${filters.search}%,local_evento.ilike.%${filters.search}%`);
+      if (filters?.search) query = query.or(`cliente.ilike.%${filters.search}%,local_evento.ilike.%${filters.search}%,responsavel_nome.ilike.%${filters.search}%`);
       const { data, error } = await query;
       if (error) throw error;
       return data;
@@ -24,7 +24,7 @@ export function useCreateOrdem() {
   return useMutation({
     mutationFn: async (data: {
       ordem: {
-        data_saida: string; data_retorno_prevista: string; responsavel_id: string;
+        data_saida: string; data_retorno_prevista: string; responsavel_nome: string;
         setor_id: string; cliente: string; contato_cliente?: string; local_evento?: string;
         descricao_servico?: string; observacoes?: string;
         checklist_funciona?: boolean; checklist_acessorios?: boolean; checklist_completo?: boolean;
@@ -32,7 +32,7 @@ export function useCreateOrdem() {
       equipamento_ids: string[];
     }) => {
       const { data: ordem, error: ordemError } = await supabase
-        .from("ordens_servico").insert(data.ordem).select().single();
+        .from("ordens_servico").insert(data.ordem as any).select().single();
       if (ordemError) throw ordemError;
 
       if (data.equipamento_ids.length > 0) {

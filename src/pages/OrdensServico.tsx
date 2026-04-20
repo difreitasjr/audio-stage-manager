@@ -3,8 +3,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOrdens, useCreateOrdem, useRetornarOrdem } from "@/hooks/useOrdens";
 import { useEquipamentos } from "@/hooks/useEquipamentos";
 import { useSetores } from "@/hooks/useSetores";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,19 +51,12 @@ export default function OrdensServico() {
   const { data: ordens = [], isLoading } = useOrdens(activeFilters);
   const { data: equipamentosDisp = [] } = useEquipamentos({ status: "disponivel" });
   const { data: setores = [] } = useSetores();
-  const { data: profiles = [] } = useQuery({
-    queryKey: ["profiles"],
-    queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("ativo", true);
-      return data || [];
-    },
-  });
 
   const createMut = useCreateOrdem();
   const retornarMut = useRetornarOrdem();
 
   const [form, setForm] = useState({
-    data_saida: "", data_retorno_prevista: "", responsavel_id: "",
+    data_saida: "", data_retorno_prevista: "", responsavel_nome: "",
     setor_id: "", cliente: "", contato_cliente: "", local_evento: "",
     descricao_servico: "", observacoes: "",
     checklist_funciona: false, checklist_acessorios: false, checklist_completo: false,
@@ -74,7 +65,7 @@ export default function OrdensServico() {
   const openCreate = () => {
     setForm({
       data_saida: new Date().toISOString().split("T")[0],
-      data_retorno_prevista: "", responsavel_id: profile?.id || "",
+      data_retorno_prevista: "", responsavel_nome: profile?.nome || "",
       setor_id: profile?.setor_id || "", cliente: "", contato_cliente: "",
       local_evento: "", descricao_servico: "", observacoes: "",
       checklist_funciona: false, checklist_acessorios: false, checklist_completo: false,
@@ -85,11 +76,11 @@ export default function OrdensServico() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.cliente || !form.data_saida || !form.data_retorno_prevista || !form.setor_id || !form.responsavel_id) return;
+    if (!form.cliente || !form.data_saida || !form.data_retorno_prevista || !form.setor_id || !form.responsavel_nome.trim()) return;
     await createMut.mutateAsync({
       ordem: {
         data_saida: form.data_saida, data_retorno_prevista: form.data_retorno_prevista,
-        responsavel_id: form.responsavel_id, setor_id: form.setor_id,
+        responsavel_nome: form.responsavel_nome.trim(), setor_id: form.setor_id,
         cliente: form.cliente, contato_cliente: form.contato_cliente || undefined,
         local_evento: form.local_evento || undefined, descricao_servico: form.descricao_servico || undefined,
         observacoes: form.observacoes || undefined,
@@ -167,7 +158,7 @@ export default function OrdensServico() {
                     <TableCell className="font-medium">#{o.numero}</TableCell>
                     <TableCell>{new Date(o.data_saida).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{o.cliente}</TableCell>
-                    <TableCell>{o.profiles?.nome}</TableCell>
+                    <TableCell>{o.responsavel_nome || "—"}</TableCell>
                     <TableCell>{o.setores?.nome}</TableCell>
                     <TableCell>{o.ordem_equipamentos?.length || 0}</TableCell>
                     <TableCell>
@@ -250,12 +241,13 @@ export default function OrdensServico() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Responsável *</Label>
-                <Select value={form.responsavel_id} onValueChange={v => setForm(f => ({ ...f, responsavel_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={form.responsavel_nome}
+                  onChange={e => setForm(f => ({ ...f, responsavel_nome: e.target.value }))}
+                  placeholder="Nome do responsável pelo evento"
+                  maxLength={120}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Setor *</Label>

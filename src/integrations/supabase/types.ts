@@ -233,7 +233,8 @@ export type Database = {
           local_evento: string | null
           numero: number
           observacoes: string | null
-          responsavel_id: string
+          responsavel_id: string | null
+          responsavel_nome: string
           setor_id: string
           status: string
           updated_at: string
@@ -252,7 +253,8 @@ export type Database = {
           local_evento?: string | null
           numero?: number
           observacoes?: string | null
-          responsavel_id: string
+          responsavel_id?: string | null
+          responsavel_nome: string
           setor_id: string
           status?: string
           updated_at?: string
@@ -271,7 +273,8 @@ export type Database = {
           local_evento?: string | null
           numero?: number
           observacoes?: string | null
-          responsavel_id?: string
+          responsavel_id?: string | null
+          responsavel_nome?: string
           setor_id?: string
           status?: string
           updated_at?: string
