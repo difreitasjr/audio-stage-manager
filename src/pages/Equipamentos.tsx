@@ -277,15 +277,70 @@ export default function Equipamentos() {
           <DialogHeader>
             <DialogTitle>{editId ? "Editar Equipamento" : "Novo Equipamento"}</DialogTitle>
           </DialogHeader>
+          {(() => {
+            const selectedSetor = setores.find((s: any) => s.id === form.setor_id);
+            const sKey = selectedSetor ? setorKey(selectedSetor.nome) : "";
+            const categoriasPreset = sKey && PRESETS[sKey] ? Object.keys(PRESETS[sKey]) : [];
+            const nomesPreset = sKey && form.categoria && PRESETS[sKey]?.[form.categoria] ? PRESETS[sKey][form.categoria] : [];
+            return (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} required />
+                <Label>Setor *</Label>
+                <Select value={form.setor_id} onValueChange={(v) => setForm((f) => ({ ...f, setor_id: v, categoria: "", nome: "" }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Ex: Microfone, Mesa de Som" />
+                {categoriasPreset.length > 0 ? (
+                  <>
+                    <Input
+                      list="categorias-list"
+                      value={form.categoria}
+                      onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, nome: "" }))}
+                      placeholder="Selecione ou digite"
+                    />
+                    <datalist id="categorias-list">
+                      {categoriasPreset.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Selecione setor primeiro" disabled={!form.setor_id} />
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Nome *</Label>
+                {nomesPreset.length > 0 ? (
+                  <>
+                    <Input
+                      list="nomes-list"
+                      value={form.nome}
+                      onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                      placeholder="Selecione ou digite"
+                      required
+                    />
+                    <datalist id="nomes-list">
+                      {nomesPreset.map((n) => <option key={n} value={n} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} required placeholder={form.setor_id ? "Digite o nome" : "Selecione setor primeiro"} />
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -306,40 +361,6 @@ export default function Equipamentos() {
               <div className="space-y-2">
                 <Label>Código de Barras</Label>
                 <Input value={form.codigo_barras} onChange={(e) => setForm((f) => ({ ...f, codigo_barras: e.target.value }))} placeholder="EAN/Code128" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Setor *</Label>
-                <Select value={form.setor_id} onValueChange={(v) => setForm((f) => ({ ...f, setor_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Localização</Label>
-              <Input value={form.localizacao} onChange={(e) => setForm((f) => ({ ...f, localizacao: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input type="number" step="0.01" value={form.valor} onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Data Aquisição</Label>
-                <Input type="date" value={form.data_aquisicao} onChange={(e) => setForm((f) => ({ ...f, data_aquisicao: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-2">
