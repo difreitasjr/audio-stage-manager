@@ -374,6 +374,8 @@ export default function Equipamentos() {
               </Button>
             </div>
           </form>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
