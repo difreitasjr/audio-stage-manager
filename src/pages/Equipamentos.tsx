@@ -113,8 +113,7 @@ export default function Equipamentos() {
     setEditId(e.id);
     setForm({
       nome: e.nome, numero_serie: e.numero_serie || "", setor_id: e.setor_id, status: e.status,
-      localizacao: e.localizacao || "", data_aquisicao: e.data_aquisicao || "",
-      valor: e.valor?.toString() || "", observacoes: e.observacoes || "",
+      observacoes: e.observacoes || "",
       marca: e.marca || "", modelo: e.modelo || "", categoria: e.categoria || "",
       codigo_barras: e.codigo_barras || "",
     });
@@ -130,9 +129,6 @@ export default function Equipamentos() {
     const payload = {
       nome: form.nome, numero_serie: form.numero_serie || undefined,
       setor_id: form.setor_id, status: form.status,
-      localizacao: form.localizacao || undefined,
-      data_aquisicao: form.data_aquisicao || undefined,
-      valor: form.valor ? parseFloat(form.valor) : undefined,
       observacoes: form.observacoes || undefined,
       marca: form.marca || undefined, modelo: form.modelo || undefined,
       categoria: form.categoria || undefined,
