@@ -32,15 +32,22 @@ export default function OrdensServico() {
   const [filters, setFilters] = useState({ status: "", setor_id: "", search: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewOrdem, setViewOrdem] = useState<any>(null);
-  const [selectedEquips, setSelectedEquips] = useState<string[]>([]);
+  const [itens, setItens] = useState<{ equipamento_id: string; quantidade: number }[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const handleScanAdd = async (code: string) => {
     const eq = await findEquipamentoByCode(code);
     if (!eq) return toast.error(`Não encontrado: ${code}`);
-    if (eq.status !== "disponivel") return toast.error(`${eq.nome} não está disponível`);
     if (form.setor_id && eq.setor_id !== form.setor_id) return toast.error(`${eq.nome} é de outro setor`);
-    setSelectedEquips((prev) => prev.includes(eq.id) ? prev : [...prev, eq.id]);
+    setItens((prev) => {
+      const idx = prev.findIndex(i => i.equipamento_id === eq.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], quantidade: copy[idx].quantidade + 1 };
+        return copy;
+      }
+      return [...prev, { equipamento_id: eq.id, quantidade: 1 }];
+    });
     toast.success(`Adicionado: ${eq.nome}`);
   };
 
