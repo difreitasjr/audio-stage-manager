@@ -105,38 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, nome: string) => {
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      if (!authData.user) throw new Error("Usuário não foi criado");
-
-      const { error: profileError } = await supabase.from("profiles").insert([
-        {
-          user_id: authData.user.id,
-          nome: nome,
-          setor_id: null,
-          ativo: true,
-        },
-      ]);
-
-      if (profileError) throw profileError;
-
-      const { error: roleError } = await supabase.from("user_roles").insert([
-        {
-          user_id: authData.user.id,
-          role: "staff",
-        },
-      ]);
-
-      if (roleError) throw roleError;
-    } catch (error: any) {
-      throw new Error(error.message || "Erro ao cadastrar usuário");
-    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: { nome },
+      },
+    });
+    if (error) throw error;
   };
 
   const signOut = async () => {
