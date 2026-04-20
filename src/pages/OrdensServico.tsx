@@ -218,6 +218,11 @@ export default function OrdensServico() {
                 <span>✅ Acessórios: {viewOrdem.checklist_acessorios ? "Sim" : "Não"}</span>
                 <span>✅ Completo: {viewOrdem.checklist_completo ? "Sim" : "Não"}</span>
               </div>
+              <div className="flex justify-end pt-2">
+                <Button size="sm" onClick={() => gerarOrdemPdf(viewOrdem)}>
+                  <FileDown className="w-4 h-4 mr-1" />Baixar PDF
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
