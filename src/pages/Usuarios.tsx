@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Power } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Usuarios() {
@@ -65,6 +65,19 @@ export default function Usuarios() {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       toast.success("Usuário atualizado!");
       setDialogOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleAtivoMut = useMutation({
+    mutationFn: async (u: any) => {
+      const { error } = await supabase.from("profiles").update({ ativo: !u.ativo }).eq("id", u.id);
+      if (error) throw error;
+      return !u.ativo;
+    },
+    onSuccess: (novoStatus) => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success(novoStatus ? "Usuário ativado" : "Usuário desativado");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -130,6 +143,15 @@ export default function Usuarios() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={u.ativo ? "Desativar" : "Ativar"}
+                        onClick={() => toggleAtivoMut.mutate(u)}
+                        disabled={toggleAtivoMut.isPending}
+                      >
+                        <Power className={`w-4 h-4 ${u.ativo ? "text-green-600" : "text-muted-foreground"}`} />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="w-4 h-4" /></Button>
                     </TableCell>
                   </TableRow>
