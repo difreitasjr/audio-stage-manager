@@ -304,21 +304,45 @@ export default function OrdensServico() {
             {/* Equipment selection */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Equipamentos Disponíveis</Label>
-                <Button type="button" variant="outline" size="sm" onClick={() => setScannerOpen(true)}>
-                  <ScanLine className="w-4 h-4 mr-1" />Escanear
-                </Button>
+                <Label>Equipamentos</Label>
+                <div className="flex gap-2">
+                  <Select value="" onValueChange={addItem}>
+                    <SelectTrigger className="w-[220px]"><SelectValue placeholder="+ Adicionar equipamento" /></SelectTrigger>
+                    <SelectContent>
+                      {filteredEquips
+                        .filter((e: any) => !itens.find(i => i.equipamento_id === e.id))
+                        .map((e: any) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.nome}{e.numero_serie ? ` (${e.numero_serie})` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setScannerOpen(true)}>
+                    <ScanLine className="w-4 h-4 mr-1" />Escanear
+                  </Button>
+                </div>
               </div>
-              <div className="border rounded-lg max-h-48 overflow-y-auto p-3 space-y-2">
-                {filteredEquips.length === 0 && <p className="text-sm text-muted-foreground">Nenhum equipamento disponível neste setor</p>}
-                {filteredEquips.map((e: any) => (
-                  <label key={e.id} className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox checked={selectedEquips.includes(e.id)} onCheckedChange={() => toggleEquip(e.id)} />
-                    <span className="text-sm">{e.nome} {e.numero_serie ? `(${e.numero_serie})` : ""}</span>
-                  </label>
-                ))}
+              <div className="border rounded-lg p-2 space-y-2 min-h-[60px]">
+                {itens.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhum equipamento adicionado</p>}
+                {itens.map(item => {
+                  const eq = equipamentosDisp.find((e: any) => e.id === item.equipamento_id);
+                  return (
+                    <div key={item.equipamento_id} className="flex items-center gap-2 bg-muted/40 rounded p-2">
+                      <Input
+                        type="number" min={1} value={item.quantidade}
+                        onChange={e => setQty(item.equipamento_id, parseInt(e.target.value) || 1)}
+                        className="w-20"
+                      />
+                      <span className="text-sm flex-1">{eq?.nome || "—"} {eq?.numero_serie ? `(${eq.numero_serie})` : ""}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(item.equipamento_id)}>Remover</Button>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-xs text-muted-foreground">{selectedEquips.length} selecionado(s)</p>
+              <p className="text-xs text-muted-foreground">
+                {itens.reduce((s, i) => s + i.quantidade, 0)} unidade(s) em {itens.length} item(s)
+              </p>
             </div>
 
             {/* Checklist */}
