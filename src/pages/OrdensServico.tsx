@@ -220,7 +220,7 @@ export default function OrdensServico() {
                 <span className="text-muted-foreground">Equipamentos:</span>
                 <ul className="mt-1 space-y-1">
                   {viewOrdem.ordem_equipamentos?.map((oe: any) => (
-                    <li key={oe.id} className="text-sm">• {oe.equipamentos?.nome || oe.equipamento_id}</li>
+                    <li key={oe.id} className="text-sm">• {oe.quantidade || 1}× {oe.equipamentos?.nome || oe.equipamento_id}</li>
                   ))}
                   {(!viewOrdem.ordem_equipamentos || viewOrdem.ordem_equipamentos.length === 0) && <li className="text-muted-foreground">Nenhum equipamento</li>}
                 </ul>
