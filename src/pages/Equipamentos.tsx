@@ -26,14 +26,65 @@ const statusColors: Record<string, string> = {
 
 interface EquipForm {
   nome: string; numero_serie: string; setor_id: string; status: string;
-  localizacao: string; data_aquisicao: string; valor: string; observacoes: string;
+  observacoes: string;
   marca: string; modelo: string; categoria: string; codigo_barras: string;
 }
 
 const emptyForm: EquipForm = {
   nome: "", numero_serie: "", setor_id: "", status: "disponivel",
-  localizacao: "", data_aquisicao: "", valor: "", observacoes: "",
+  observacoes: "",
   marca: "", modelo: "", categoria: "", codigo_barras: "",
+};
+
+// Presets por setor: categoria -> lista de equipamentos comuns
+const PRESETS: Record<string, Record<string, string[]>> = {
+  som: {
+    "Microfone": ["Microfone Shure SM58", "Microfone Shure SM57", "Microfone Sennheiser e835", "Microfone Lapela", "Microfone Headset", "Microfone sem fio"],
+    "Mesa de Som": ["Mesa Behringer X32", "Mesa Yamaha MG", "Mesa Allen & Heath", "Mesa Soundcraft"],
+    "Caixa Acústica": ["Caixa Ativa JBL", "Caixa Passiva", "Subwoofer", "Monitor de Palco"],
+    "Amplificador": ["Amplificador de Potência", "Pré-amplificador"],
+    "Cabo": ["Cabo XLR", "Cabo P10", "Cabo de Força", "Multicabo"],
+    "Pedestal": ["Pedestal de Microfone", "Girafa", "Pedestal de Caixa"],
+    "Acessório": ["Direct Box", "Pop Filter", "Fone de Ouvido", "Sistema In-Ear"],
+  },
+  luz: {
+    "Refletor": ["Par LED", "Par 64", "Fresnel", "Elipsoidal", "Set Light"],
+    "Moving": ["Moving Beam", "Moving Wash", "Moving Spot"],
+    "Mesa de Luz": ["Mesa DMX", "Console Avolites", "Console GrandMA"],
+    "Máquina": ["Máquina de Fumaça", "Máquina de Neblina", "Máquina de Bolha"],
+    "Estrutura": ["Box Truss Q30", "Box Truss Q50", "Talha", "Sapata"],
+    "Cabo": ["Cabo DMX", "Cabo PP", "Multipinos"],
+    "Acessório": ["Strobo", "Laser", "Globo Espelhado"],
+  },
+  video: {
+    "Câmera": ["Câmera Sony", "Câmera Canon", "Câmera Blackmagic", "Câmera PTZ"],
+    "Lente": ["Lente 24-70mm", "Lente 70-200mm", "Lente Grande Angular"],
+    "Tripé": ["Tripé de Câmera", "Slider", "Estabilizador"],
+    "Monitor": ["Monitor de Referência", "Monitor de Campo"],
+    "Switcher": ["ATEM Mini", "ATEM Mini Pro", "Switcher Roland"],
+    "Iluminação": ["Painel LED", "Softbox", "Refletor de Vídeo"],
+    "Cabo": ["Cabo HDMI", "Cabo SDI", "Cabo de Energia"],
+    "Acessório": ["Cartão SD", "Bateria", "Carregador"],
+  },
+  streaming: {
+    "Computador": ["Notebook Streaming", "Desktop Streaming"],
+    "Encoder": ["Encoder de Vídeo", "Placa de Captura"],
+    "Switcher": ["ATEM Mini", "ATEM Mini Pro", "vMix Hardware"],
+    "Áudio": ["Interface de Áudio", "Mixer USB"],
+    "Conectividade": ["Roteador", "Modem 4G", "Switch de Rede"],
+    "Cabo": ["Cabo HDMI", "Cabo SDI", "Cabo de Rede"],
+    "Acessório": ["Webcam", "Headset", "Captura USB"],
+  },
+};
+
+// Normaliza nome do setor para chave do preset
+const setorKey = (nome: string): string => {
+  const n = nome.toLowerCase().trim();
+  if (n.includes("som")) return "som";
+  if (n.includes("luz")) return "luz";
+  if (n.includes("vídeo") || n.includes("video")) return "video";
+  if (n.includes("stream")) return "streaming";
+  return "";
 };
 
 export default function Equipamentos() {
