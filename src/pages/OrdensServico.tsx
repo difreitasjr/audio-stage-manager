@@ -78,13 +78,14 @@ export default function OrdensServico() {
       local_evento: "", descricao_servico: "", observacoes: "",
       checklist_funciona: false, checklist_acessorios: false, checklist_completo: false,
     });
-    setSelectedEquips([]);
+    setItens([]);
     setDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.cliente || !form.data_saida || !form.data_retorno_prevista || !form.setor_id || !form.responsavel_nome.trim()) return;
+    if (itens.length === 0) return toast.error("Adicione ao menos um equipamento");
     await createMut.mutateAsync({
       ordem: {
         data_saida: form.data_saida, data_retorno_prevista: form.data_retorno_prevista,
@@ -95,13 +96,17 @@ export default function OrdensServico() {
         checklist_funciona: form.checklist_funciona, checklist_acessorios: form.checklist_acessorios,
         checklist_completo: form.checklist_completo,
       },
-      equipamento_ids: selectedEquips,
+      itens,
     });
     setDialogOpen(false);
   };
 
-  const toggleEquip = (id: string) => {
-    setSelectedEquips(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]);
+  const addItem = (id: string) => {
+    setItens(prev => prev.find(i => i.equipamento_id === id) ? prev : [...prev, { equipamento_id: id, quantidade: 1 }]);
+  };
+  const removeItem = (id: string) => setItens(prev => prev.filter(i => i.equipamento_id !== id));
+  const setQty = (id: string, qty: number) => {
+    setItens(prev => prev.map(i => i.equipamento_id === id ? { ...i, quantidade: Math.max(1, qty) } : i));
   };
 
   const filteredEquips = equipamentosDisp.filter((e: any) => !form.setor_id || e.setor_id === form.setor_id);
