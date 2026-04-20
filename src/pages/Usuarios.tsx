@@ -75,9 +75,13 @@ export default function Usuarios() {
 
   const toggleAtivoMut = useMutation({
     mutationFn: async (u: any) => {
-      const { error } = await supabase.from("profiles").update({ ativo: !u.ativo }).eq("id", u.id);
+      const novo = !u.ativo;
+      const { data, error } = await supabase.functions.invoke("toggle-user-ativo", {
+        body: { user_id: u.user_id, ativo: novo },
+      });
       if (error) throw error;
-      return !u.ativo;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return novo;
     },
     onSuccess: (novoStatus) => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
