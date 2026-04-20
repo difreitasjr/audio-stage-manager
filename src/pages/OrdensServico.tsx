@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, RotateCcw, ScanLine } from "lucide-react";
+import { Plus, Search, Eye, RotateCcw, ScanLine, FileDown } from "lucide-react";
 import { ScannerDialog } from "@/components/ScannerDialog";
 import { findEquipamentoByCode } from "@/hooks/useEquipamentos";
+import { gerarOrdemPdf } from "@/lib/ordemPdf";
 import { toast } from "sonner";
 
 const statusLabels: Record<string, string> = {
@@ -167,6 +168,7 @@ export default function OrdensServico() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewOrdem(o)}><Eye className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => gerarOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
                         {o.status !== "retornado" && (
                           <Button variant="ghost" size="icon" onClick={() => retornarMut.mutate(o.id)}>
                             <RotateCcw className="w-4 h-4 text-green-600" />
@@ -215,6 +217,11 @@ export default function OrdensServico() {
                 <span>✅ Funciona: {viewOrdem.checklist_funciona ? "Sim" : "Não"}</span>
                 <span>✅ Acessórios: {viewOrdem.checklist_acessorios ? "Sim" : "Não"}</span>
                 <span>✅ Completo: {viewOrdem.checklist_completo ? "Sim" : "Não"}</span>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button size="sm" onClick={() => gerarOrdemPdf(viewOrdem)}>
+                  <FileDown className="w-4 h-4 mr-1" />Baixar PDF
+                </Button>
               </div>
             </div>
           )}
