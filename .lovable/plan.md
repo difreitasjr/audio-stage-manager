@@ -1,41 +1,94 @@
 
-Atualizar os PRESETS de equipamentos em `src/pages/Equipamentos.tsx` para refletir o foco em **eventos corporativos** (palestras, congressos, conferências, lançamentos, treinamentos).
 
-### Novos presets por setor
+## Visão geral do que melhorar
 
-**Vídeo**
-- Projetor: Epson PowerLite 5000lm, Epson PowerLite 7000lm, Epson Pro L1100U, Optoma ZU720, Panasonic PT-RZ970
-- Tela de Projeção: Tela Tripé 100", Tela Retrátil 120", Tela Fast-Fold 200", Tela Fast-Fold 300"
-- Painel de LED: Painel LED P2.6 Indoor, Painel LED P3.9 Indoor/Outdoor, Painel LED P4.8 Outdoor, Módulo LED Absen
-- Monitor/TV: TV LED 55", TV LED 65", TV LED 75", Monitor de Referência 24"
-- Câmera: Sony PXW-Z150, Panasonic AG-CX10, Blackmagic Pocket 6K, PTZ Sony SRG-X120
-- Switcher/Processador: Blackmagic ATEM Mini Pro, Roland V-1HD, Processador Novastar MCTRL4K
-- Cabos e Conversores: Cabo HDMI 10m, Cabo HDMI 20m, Cabo SDI 30m, Conversor HDMI-SDI, Fibra Óptica HDMI 50m
+Olhando o app inteiro, identifiquei pontos de melhoria divididos em 3 níveis. Vou propor implementar o **Nível 1 (foco do seu pedido)** agora e listar o restante como próximos passos.
 
-**Som**
-- Microfone: Shure SM58, Shure Beta 58A, Sennheiser e835, Lapela Sennheiser EW112, Headset Sennheiser HSP4, Microfone Gooseneck
-- Sistema Sem Fio: Shure BLX24, Shure QLX-D, Sennheiser EW100 G4, Sennheiser EW500
-- Mesa de Som: Behringer X32, Yamaha QL5, Allen & Heath SQ-6, Soundcraft Ui24R
-- Caixa Acústica: Line Array RCF HDL 20-A, JBL VRX932, EV ETX-15P, Subwoofer JBL SRX828SP
-- Monitor de Retorno: Monitor JBL EON612, Monitor de Palco Behringer
-- Acessórios: Pedestal de Microfone, Direct Box Behringer DI100, Cabo XLR 10m, Multicabo 16 vias
+---
 
-**Luz**
-- Iluminação de Palco: Moving Head Beam 230, Moving Head Spot 350, Refletor LED Par 64, Fresnel LED 200W
-- Iluminação Cênica: Elipsoidal LED 26°, Elipsoidal LED 36°, Setlight LED 1000W
-- Mesa de Luz: Mesa Avolites Quartz, Mesa GrandMA3 OnPC, Console Chamsys MagicQ
-- Estrutura: Treliça Q30 3m, Box Truss 2m, Talha Manual 1T, Base de Solo
-- Efeitos: Máquina de Fumaça 1500W, Máquina de Haze, Strobo LED
+## Nível 1 — Detalhes e características dos equipamentos (foco)
 
-**Streaming**
-- Câmera de Streaming: Logitech BRIO 4K, Sony ZV-E10, Câmera PTZ OBSBOT Tail Air, Webcam Logitech C920
-- Captura/Encoder: Elgato Cam Link 4K, Blackmagic Web Presenter HD, Encoder Teradek VidiU Go
-- Switcher de Streaming: ATEM Mini Pro ISO, ATEM Mini Extreme, vMix PC Dedicado
-- Áudio para Streaming: Interface Focusrite Scarlett 2i2, RodeCaster Pro II, Microfone USB Blue Yeti
-- Conectividade: Roteador 4G/5G Bonding, Switch Gigabit 8 portas, Cabo Ethernet Cat6 30m
-- Iluminação Stream: Ring Light 18", Painel LED Godox SL60, Softbox 60x60
+Hoje o cadastro de equipamento tem só campos genéricos (nome, marca, modelo, série). Para audiovisual isso é pouco — um projetor sem saber lumens/resolução, ou um microfone sem saber se é dinâmico/condensador, vira problema na hora de montar a OS.
 
-### Implementação
-- Substituir o objeto `PRESETS` em `src/pages/Equipamentos.tsx` mantendo a mesma estrutura `Record<setorKey, Record<categoria, string[]>>`.
-- Manter chaves de setor minúsculas (`som`, `luz`, `video`, `streaming`) para o lookup já existente via `nome.toLowerCase()`.
-- Nenhuma mudança em banco, RLS, ou outros componentes.
+### A. Campos novos por categoria (especificações técnicas)
+
+Adicionar uma coluna `especificacoes` (JSONB) na tabela `equipamentos` para guardar atributos flexíveis por tipo. Sem precisar criar 30 colunas novas.
+
+Schema sugerido por categoria:
+
+| Categoria | Campos |
+|---|---|
+| Projetor | Lumens, Resolução, Tecnologia (DLP/LCD/LASER), Lente, Horas de lâmpada |
+| Painel LED | Pitch (P2.6/P3.9...), Resolução módulo, Quantidade de módulos, Indoor/Outdoor |
+| Câmera | Sensor, Resolução máx, Tipo de lente/montagem, SDI/HDMI |
+| Microfone | Tipo (dinâmico/condensador/lapela), Padrão polar, Conector, Frequência (sem fio) |
+| Mesa de Som | Canais, Tipo (digital/analógica), Saídas |
+| Caixa Acústica | Potência (W), Tipo (line array/PA/monitor), Ativa/Passiva |
+| Moving/Refletor | Potência (W), Tipo (LED/lâmpada), Ângulo, DMX |
+| Mesa de Luz | Universos DMX, Marca/Software |
+| Encoder/Switcher Stream | Entradas, Saídas, Resolução máx, Bitrate |
+
+### B. Campos universais novos
+- **Foto do equipamento** (1 imagem, storage bucket `equipamento-fotos`) — útil pra identificar visualmente
+- **Estado de conservação** (Novo / Bom / Regular / Crítico) — separado de "status"
+- **Nº de patrimônio** (separado de série) — empresas grandes usam ambos
+- **Data da última revisão** + **próxima revisão prevista**
+- **Acessórios inclusos** (texto livre — ex: "case + cabo de força + controle")
+
+### C. Visualização (Equipamentos.tsx)
+- Botão "Ver detalhes" abre um drawer lateral com **ficha técnica completa** + foto + histórico (últimas OS + últimas manutenções)
+- No formulário, uma seção **"Especificações"** que renderiza dinamicamente os campos da categoria selecionada
+- Filtro adicional na listagem: por **estado de conservação**
+
+---
+
+## Nível 2 — Melhorias gerais de qualidade (não vou fazer agora, só listar)
+
+- **Manutenção sem opções**: o select de equipamento na tela de Manutenção mostra todos sem filtrar por setor/status; falta filtro de busca
+- **Movimentação não registra automaticamente**: hoje a tabela `movimentacao_estoque` existe mas nada grava nela. Deveria registrar saída/retorno sempre que uma OS muda de status
+- **Dashboard sem alertas**: não destaca OS atrasadas nem manutenções >30 dias
+- **Sem upload de anexos na OS**: nota fiscal, contrato, foto do evento
+
+## Nível 3 — UX e polimento
+
+- Tema escuro (já tem `next-themes` instalado, falta toggle)
+- Atalhos de teclado (Ctrl+K busca global, N nova OS)
+- Confirmação de exclusão com dialog bonito (hoje usa `confirm()` nativo do browser)
+
+---
+
+## Implementação técnica do Nível 1
+
+1. **Migração SQL**:
+   - `ALTER TABLE equipamentos ADD COLUMN especificacoes JSONB DEFAULT '{}'::jsonb`
+   - `ADD COLUMN foto_url TEXT`
+   - `ADD COLUMN estado_conservacao TEXT DEFAULT 'bom'` (novo/bom/regular/critico)
+   - `ADD COLUMN numero_patrimonio TEXT`
+   - `ADD COLUMN data_ultima_revisao DATE`
+   - `ADD COLUMN proxima_revisao DATE`
+   - `ADD COLUMN acessorios TEXT`
+   - Criar bucket `equipamento-fotos` (público) com RLS de upload restrita a authenticated
+
+2. **`src/lib/equipSpecs.ts`** (novo): mapa `categoria → array de campos { key, label, type, options? }` para renderizar formulário dinâmico
+
+3. **`src/pages/Equipamentos.tsx`**:
+   - Form expandido: nova seção "Especificações Técnicas" (dinâmica) + "Conservação e Manutenção" + upload de foto
+   - Novo componente `EquipDetailsDrawer` com ficha completa, foto, especificações renderizadas, histórico de OS e manutenções
+   - Botão olho 👁 na tabela abre o drawer
+
+4. **`src/hooks/useEquipamentos.ts`**: incluir os novos campos no tipo `EquipFields` e nas mutations
+
+5. **Histórico do equipamento** (no drawer): query que junta `ordem_equipamentos` (com `ordens_servico`) + `manutencao` para o `equipamento_id`
+
+Sem mudanças em RLS — herda as políticas existentes da tabela `equipamentos`.
+
+---
+
+## Pergunta antes de implementar
+
+Quer que eu faça **tudo do Nível 1** numa tacada só, ou prefere fatiar? Sugestão de fatias se preferir incremental:
+- **Fatia A**: campos universais (foto, conservação, patrimônio, revisão, acessórios) + drawer de detalhes com histórico
+- **Fatia B**: especificações técnicas dinâmicas por categoria
+
+Me confirma "tudo" ou "fatia A primeiro" que eu sigo.
+
