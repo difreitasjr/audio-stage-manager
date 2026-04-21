@@ -279,7 +279,7 @@ export default function OrdensServico() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nova Ordem de Serviço</DialogTitle>
+            <DialogTitle>{editOrdemId ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -401,7 +401,9 @@ export default function OrdensServico() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createMut.isPending}>Criar Ordem</Button>
+              <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
+                {editOrdemId ? "Salvar Alterações" : "Criar Ordem"}
+              </Button>
             </div>
           </form>
         </DialogContent>
