@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOrdens, useCreateOrdem, useRetornarOrdem } from "@/hooks/useOrdens";
+import { useOrdens, useCreateOrdem, useUpdateOrdem, useRetornarOrdem } from "@/hooks/useOrdens";
 import { useEquipamentos } from "@/hooks/useEquipamentos";
 import { useSetores } from "@/hooks/useSetores";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, RotateCcw, ScanLine, FileDown } from "lucide-react";
+import { Plus, Search, Eye, RotateCcw, ScanLine, FileDown, Pencil } from "lucide-react";
 import { ScannerDialog } from "@/components/ScannerDialog";
 import { findEquipamentoByCode } from "@/hooks/useEquipamentos";
 import { gerarOrdemPdf } from "@/lib/ordemPdf";
@@ -32,6 +32,7 @@ export default function OrdensServico() {
   const [filters, setFilters] = useState({ status: "", setor_id: "", search: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewOrdem, setViewOrdem] = useState<any>(null);
+  const [editOrdemId, setEditOrdemId] = useState<string | null>(null);
   const [itens, setItens] = useState<{ equipamento_id: string; quantidade: number }[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -61,6 +62,7 @@ export default function OrdensServico() {
   const { data: setores = [] } = useSetores();
 
   const createMut = useCreateOrdem();
+  const updateMut = useUpdateOrdem();
   const retornarMut = useRetornarOrdem();
 
   const [form, setForm] = useState({
@@ -71,6 +73,7 @@ export default function OrdensServico() {
   });
 
   const openCreate = () => {
+    setEditOrdemId(null);
     setForm({
       data_saida: new Date().toISOString().split("T")[0],
       data_retorno_prevista: "", responsavel_nome: profile?.nome || "",
@@ -82,22 +85,50 @@ export default function OrdensServico() {
     setDialogOpen(true);
   };
 
+  const openEdit = (o: any) => {
+    setEditOrdemId(o.id);
+    setForm({
+      data_saida: o.data_saida || "",
+      data_retorno_prevista: o.data_retorno_prevista || "",
+      responsavel_nome: o.responsavel_nome || "",
+      setor_id: o.setor_id || "",
+      cliente: o.cliente || "",
+      contato_cliente: o.contato_cliente || "",
+      local_evento: o.local_evento || "",
+      descricao_servico: o.descricao_servico || "",
+      observacoes: o.observacoes || "",
+      checklist_funciona: !!o.checklist_funciona,
+      checklist_acessorios: !!o.checklist_acessorios,
+      checklist_completo: !!o.checklist_completo,
+    });
+    setItens((o.ordem_equipamentos || []).map((oe: any) => ({
+      equipamento_id: oe.equipamento_id, quantidade: oe.quantidade || 1,
+    })));
+    setViewOrdem(null);
+    setDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.cliente || !form.data_saida || !form.data_retorno_prevista || !form.setor_id || !form.responsavel_nome.trim()) return;
     if (itens.length === 0) return toast.error("Adicione ao menos um equipamento");
-    await createMut.mutateAsync({
-      ordem: {
-        data_saida: form.data_saida, data_retorno_prevista: form.data_retorno_prevista,
-        responsavel_nome: form.responsavel_nome.trim(), setor_id: form.setor_id,
-        cliente: form.cliente, contato_cliente: form.contato_cliente || undefined,
-        local_evento: form.local_evento || undefined, descricao_servico: form.descricao_servico || undefined,
-        observacoes: form.observacoes || undefined,
-        checklist_funciona: form.checklist_funciona, checklist_acessorios: form.checklist_acessorios,
-        checklist_completo: form.checklist_completo,
-      },
-      itens,
-    });
+    const ordemPayload = {
+      data_saida: form.data_saida, data_retorno_prevista: form.data_retorno_prevista,
+      responsavel_nome: form.responsavel_nome.trim(), setor_id: form.setor_id,
+      cliente: form.cliente,
+      contato_cliente: form.contato_cliente || null,
+      local_evento: form.local_evento || null,
+      descricao_servico: form.descricao_servico || null,
+      observacoes: form.observacoes || null,
+      checklist_funciona: form.checklist_funciona,
+      checklist_acessorios: form.checklist_acessorios,
+      checklist_completo: form.checklist_completo,
+    };
+    if (editOrdemId) {
+      await updateMut.mutateAsync({ id: editOrdemId, ordem: ordemPayload as any, itens });
+    } else {
+      await createMut.mutateAsync({ ordem: ordemPayload as any, itens });
+    }
     setDialogOpen(false);
   };
 
@@ -180,6 +211,7 @@ export default function OrdensServico() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewOrdem(o)}><Eye className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(o)} title="Editar"><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => gerarOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
                         {o.status !== "retornado" && (
                           <Button variant="ghost" size="icon" onClick={() => retornarMut.mutate(o.id)}>
@@ -230,7 +262,10 @@ export default function OrdensServico() {
                 <span>✅ Acessórios: {viewOrdem.checklist_acessorios ? "Sim" : "Não"}</span>
                 <span>✅ Completo: {viewOrdem.checklist_completo ? "Sim" : "Não"}</span>
               </div>
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end gap-2 pt-2">
+                <Button size="sm" variant="outline" onClick={() => openEdit(viewOrdem)}>
+                  <Pencil className="w-4 h-4 mr-1" />Editar
+                </Button>
                 <Button size="sm" onClick={() => gerarOrdemPdf(viewOrdem)}>
                   <FileDown className="w-4 h-4 mr-1" />Baixar PDF
                 </Button>
@@ -244,7 +279,7 @@ export default function OrdensServico() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nova Ordem de Serviço</DialogTitle>
+            <DialogTitle>{editOrdemId ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -366,7 +401,9 @@ export default function OrdensServico() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createMut.isPending}>Criar Ordem</Button>
+              <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
+                {editOrdemId ? "Salvar Alterações" : "Criar Ordem"}
+              </Button>
             </div>
           </form>
         </DialogContent>

@@ -59,6 +59,45 @@ export function useCreateOrdem() {
   });
 }
 
+export function useUpdateOrdem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      ordem: Partial<{
+        data_saida: string; data_retorno_prevista: string; responsavel_nome: string;
+        setor_id: string; cliente: string; contato_cliente: string | null; local_evento: string | null;
+        descricao_servico: string | null; observacoes: string | null;
+        checklist_funciona: boolean; checklist_acessorios: boolean; checklist_completo: boolean;
+      }>;
+      itens: { equipamento_id: string; quantidade: number }[];
+    }) => {
+      const { error: upErr } = await supabase
+        .from("ordens_servico").update(data.ordem as any).eq("id", data.id);
+      if (upErr) throw upErr;
+
+      const { error: delErr } = await supabase
+        .from("ordem_equipamentos").delete().eq("ordem_id", data.id);
+      if (delErr) throw delErr;
+
+      if (data.itens.length > 0) {
+        const items = data.itens.map(it => ({
+          ordem_id: data.id,
+          equipamento_id: it.equipamento_id,
+          quantidade: it.quantidade,
+        }));
+        const { error: insErr } = await supabase.from("ordem_equipamentos").insert(items);
+        if (insErr) throw insErr;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ordens"] });
+      toast.success("Ordem atualizada!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
 export function useRetornarOrdem() {
   const qc = useQueryClient();
   return useMutation({
