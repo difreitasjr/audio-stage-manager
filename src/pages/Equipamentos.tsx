@@ -11,10 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Download, ScanLine, QrCode } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Download, ScanLine, QrCode, Eye, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { ScannerDialog } from "@/components/ScannerDialog";
 import { QrLabelDialog } from "@/components/QrLabelDialog";
+import { EquipDetailsDrawer } from "@/components/EquipDetailsDrawer";
+import { getSpecFields, ESTADO_CONSERVACAO_LABELS, ESTADO_CONSERVACAO_COLORS } from "@/lib/equipSpecs";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusLabels: Record<string, string> = {
   disponivel: "Disponível", em_uso: "Em Uso", danificado: "Danificado", manutencao: "Manutenção",
@@ -28,12 +31,26 @@ interface EquipForm {
   nome: string; numero_serie: string; setor_id: string; status: string;
   observacoes: string;
   marca: string; modelo: string; categoria: string; codigo_barras: string;
+  estado_conservacao: string;
+  numero_patrimonio: string;
+  data_ultima_revisao: string;
+  proxima_revisao: string;
+  acessorios: string;
+  foto_url: string;
+  especificacoes: Record<string, any>;
 }
 
 const emptyForm: EquipForm = {
   nome: "", numero_serie: "", setor_id: "", status: "disponivel",
   observacoes: "",
   marca: "", modelo: "", categoria: "", codigo_barras: "",
+  estado_conservacao: "bom",
+  numero_patrimonio: "",
+  data_ultima_revisao: "",
+  proxima_revisao: "",
+  acessorios: "",
+  foto_url: "",
+  especificacoes: {},
 };
 
 // Presets por setor: categoria -> lista de equipamentos comuns
@@ -72,7 +89,6 @@ const PRESETS: Record<string, Record<string, string[]>> = {
   },
 };
 
-// Normaliza nome do setor para chave do preset
 const setorKey = (nome: string): string => {
   const n = nome.toLowerCase().trim();
   if (n.includes("som")) return "som";
@@ -84,19 +100,24 @@ const setorKey = (nome: string): string => {
 
 export default function Equipamentos() {
   const { isAdmin } = useAuth();
-  const [filters, setFilters] = useState({ setor_id: "", status: "", search: "" });
+  const [filters, setFilters] = useState({ setor_id: "", status: "", search: "", conservacao: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EquipForm>(emptyForm);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [labelEquip, setLabelEquip] = useState<any | null>(null);
+  const [detailsEquip, setDetailsEquip] = useState<any | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const activeFilters = {
     setor_id: filters.setor_id || undefined,
     status: filters.status || undefined,
     search: filters.search || undefined,
   };
-  const { data: equipamentos = [], isLoading } = useEquipamentos(activeFilters);
+  const { data: equipamentosRaw = [], isLoading } = useEquipamentos(activeFilters);
+  const equipamentos = filters.conservacao
+    ? equipamentosRaw.filter((e: any) => (e.estado_conservacao || "bom") === filters.conservacao)
+    : equipamentosRaw;
   const { data: setores = [] } = useSetores();
   const createMut = useCreateEquipamento();
   const updateMut = useUpdateEquipamento();
@@ -111,8 +132,32 @@ export default function Equipamentos() {
       observacoes: e.observacoes || "",
       marca: e.marca || "", modelo: e.modelo || "", categoria: e.categoria || "",
       codigo_barras: e.codigo_barras || "",
+      estado_conservacao: e.estado_conservacao || "bom",
+      numero_patrimonio: e.numero_patrimonio || "",
+      data_ultima_revisao: e.data_ultima_revisao || "",
+      proxima_revisao: e.proxima_revisao || "",
+      acessorios: e.acessorios || "",
+      foto_url: e.foto_url || "",
+      especificacoes: e.especificacoes || {},
     });
     setDialogOpen(true);
+  };
+
+  const handlePhotoUpload = async (file: File) => {
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("equipamento-fotos").upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from("equipamento-fotos").getPublicUrl(path);
+      setForm((f) => ({ ...f, foto_url: data.publicUrl }));
+      toast.success("Foto enviada!");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,16 +166,23 @@ export default function Equipamentos() {
       toast.error("Nome e Setor são obrigatórios");
       return;
     }
-    const payload = {
+    const payload: any = {
       nome: form.nome, numero_serie: form.numero_serie || undefined,
       setor_id: form.setor_id, status: form.status,
       observacoes: form.observacoes || undefined,
       marca: form.marca || undefined, modelo: form.modelo || undefined,
       categoria: form.categoria || undefined,
       codigo_barras: form.codigo_barras || undefined,
+      estado_conservacao: form.estado_conservacao,
+      numero_patrimonio: form.numero_patrimonio || undefined,
+      data_ultima_revisao: form.data_ultima_revisao || null,
+      proxima_revisao: form.proxima_revisao || null,
+      acessorios: form.acessorios || undefined,
+      foto_url: form.foto_url || null,
+      especificacoes: form.especificacoes || {},
     };
     if (editId) await updateMut.mutateAsync({ id: editId, ...payload });
-    else await createMut.mutateAsync(payload as any);
+    else await createMut.mutateAsync(payload);
     setDialogOpen(false);
   };
 
@@ -146,11 +198,12 @@ export default function Equipamentos() {
   };
 
   const exportCSV = () => {
-    const headers = ["Nome", "Marca", "Modelo", "Categoria", "Nº Série", "Cód. Barras", "Setor", "Status", "Valor"];
+    const headers = ["Nome", "Marca", "Modelo", "Categoria", "Nº Série", "Patrimônio", "Cód. Barras", "Setor", "Status", "Conservação", "Valor"];
     const rows = equipamentos.map((e: any) => [
       e.nome, e.marca || "", e.modelo || "", e.categoria || "",
-      e.numero_serie || "", e.codigo_barras || "",
-      (e.setores as any)?.nome || "", statusLabels[e.status], e.valor || "",
+      e.numero_serie || "", e.numero_patrimonio || "", e.codigo_barras || "",
+      (e.setores as any)?.nome || "", statusLabels[e.status],
+      ESTADO_CONSERVACAO_LABELS[e.estado_conservacao || "bom"], e.valor || "",
     ]);
     const escape = (v: any) => {
       let s = String(v ?? "");
@@ -163,6 +216,12 @@ export default function Equipamentos() {
     const a = document.createElement("a");
     a.href = url; a.download = "equipamentos.csv"; a.click();
   };
+
+  const selectedSetor = setores.find((s: any) => s.id === form.setor_id);
+  const sKey = selectedSetor ? setorKey(selectedSetor.nome) : "";
+  const categoriasPreset = sKey && PRESETS[sKey] ? Object.keys(PRESETS[sKey]) : [];
+  const nomesPreset = sKey && form.categoria && PRESETS[sKey]?.[form.categoria] ? PRESETS[sKey][form.categoria] : [];
+  const specFields = getSpecFields(form.categoria);
 
   return (
     <div className="space-y-4">
@@ -188,8 +247,8 @@ export default function Equipamentos() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Buscar por nome, série, marca..." className="pl-9"
                 value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} />
@@ -208,6 +267,13 @@ export default function Equipamentos() {
                 {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={filters.conservacao} onValueChange={(v) => setFilters((f) => ({ ...f, conservacao: v === "all" ? "" : v }))}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Conservação" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toda Conservação</SelectItem>
+                {Object.entries(ESTADO_CONSERVACAO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -222,9 +288,9 @@ export default function Equipamentos() {
                   <TableHead>Marca/Modelo</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Nº Série</TableHead>
-                  <TableHead>Cód. Barras</TableHead>
                   <TableHead>Setor</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Conservação</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -232,22 +298,36 @@ export default function Equipamentos() {
               <TableBody>
                 {equipamentos.map((equip: any) => (
                   <TableRow key={equip.id}>
-                    <TableCell className="font-medium">{equip.nome}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {equip.foto_url && (
+                          <img src={equip.foto_url} alt="" className="w-8 h-8 rounded object-cover bg-muted" />
+                        )}
+                        {equip.nome}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {equip.marca || equip.modelo ? `${equip.marca || ""} ${equip.modelo || ""}`.trim() : "—"}
                     </TableCell>
                     <TableCell className="text-sm">{equip.categoria || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{equip.numero_serie || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-xs">{equip.codigo_barras || "—"}</TableCell>
                     <TableCell>{(equip.setores as any)?.nome}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={statusColors[equip.status]}>{statusLabels[equip.status]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={ESTADO_CONSERVACAO_COLORS[equip.estado_conservacao || "bom"]}>
+                        {ESTADO_CONSERVACAO_LABELS[equip.estado_conservacao || "bom"]}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {equip.valor ? `R$ ${Number(equip.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => setDetailsEquip(equip)} title="Ver detalhes">
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => setLabelEquip(equip)} title="Etiqueta QR">
                           <QrCode className="w-4 h-4" />
                         </Button>
@@ -277,12 +357,6 @@ export default function Equipamentos() {
           <DialogHeader>
             <DialogTitle>{editId ? "Editar Equipamento" : "Novo Equipamento"}</DialogTitle>
           </DialogHeader>
-          {(() => {
-            const selectedSetor = setores.find((s: any) => s.id === form.setor_id);
-            const sKey = selectedSetor ? setorKey(selectedSetor.nome) : "";
-            const categoriasPreset = sKey && PRESETS[sKey] ? Object.keys(PRESETS[sKey]) : [];
-            const nomesPreset = sKey && form.categoria && PRESETS[sKey]?.[form.categoria] ? PRESETS[sKey][form.categoria] : [];
-            return (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -309,31 +383,24 @@ export default function Equipamentos() {
                 <Label>Categoria</Label>
                 {categoriasPreset.length > 0 ? (
                   <>
-                    <Input
-                      list="categorias-list"
-                      value={form.categoria}
-                      onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, nome: "" }))}
-                      placeholder="Selecione ou digite"
-                    />
+                    <Input list="categorias-list" value={form.categoria}
+                      onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, nome: "", especificacoes: {} }))}
+                      placeholder="Selecione ou digite" />
                     <datalist id="categorias-list">
                       {categoriasPreset.map((c) => <option key={c} value={c} />)}
                     </datalist>
                   </>
                 ) : (
-                  <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Selecione setor primeiro" disabled={!form.setor_id} />
+                  <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, especificacoes: {} }))} placeholder="Selecione setor primeiro" disabled={!form.setor_id} />
                 )}
               </div>
               <div className="space-y-2">
                 <Label>Nome *</Label>
                 {nomesPreset.length > 0 ? (
                   <>
-                    <Input
-                      list="nomes-list"
-                      value={form.nome}
+                    <Input list="nomes-list" value={form.nome}
                       onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-                      placeholder="Selecione ou digite"
-                      required
-                    />
+                      placeholder="Selecione ou digite" required />
                     <datalist id="nomes-list">
                       {nomesPreset.map((n) => <option key={n} value={n} />)}
                     </datalist>
@@ -353,16 +420,104 @@ export default function Equipamentos() {
                 <Input value={form.modelo} onChange={(e) => setForm((f) => ({ ...f, modelo: e.target.value }))} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Nº Série</Label>
                 <Input value={form.numero_serie} onChange={(e) => setForm((f) => ({ ...f, numero_serie: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Nº Patrimônio</Label>
+                <Input value={form.numero_patrimonio} onChange={(e) => setForm((f) => ({ ...f, numero_patrimonio: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Código de Barras</Label>
                 <Input value={form.codigo_barras} onChange={(e) => setForm((f) => ({ ...f, codigo_barras: e.target.value }))} placeholder="EAN/Code128" />
               </div>
             </div>
+
+            {/* Foto */}
+            <div className="space-y-2">
+              <Label>Foto</Label>
+              {form.foto_url ? (
+                <div className="relative inline-block">
+                  <img src={form.foto_url} alt="" className="w-32 h-32 object-cover rounded border" />
+                  <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={() => setForm((f) => ({ ...f, foto_url: "" }))}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center w-full h-24 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition">
+                  <div className="text-center text-sm text-muted-foreground">
+                    <Upload className="w-5 h-5 mx-auto mb-1" />
+                    {uploadingPhoto ? "Enviando..." : "Clique para enviar foto"}
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto}
+                    onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])} />
+                </label>
+              )}
+            </div>
+
+            {/* Especificações Técnicas dinâmicas */}
+            {specFields.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="font-semibold text-sm">Especificações Técnicas</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {specFields.map((field) => (
+                    <div key={field.key} className="space-y-2">
+                      <Label>{field.label}{field.suffix ? ` (${field.suffix})` : ""}</Label>
+                      {field.type === "select" ? (
+                        <Select
+                          value={form.especificacoes[field.key] || ""}
+                          onValueChange={(v) => setForm((f) => ({ ...f, especificacoes: { ...f.especificacoes, [field.key]: v } }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            {field.options?.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type={field.type === "number" ? "number" : "text"}
+                          value={form.especificacoes[field.key] || ""}
+                          onChange={(e) => setForm((f) => ({ ...f, especificacoes: { ...f.especificacoes, [field.key]: e.target.value } }))}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Conservação e Manutenção */}
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="font-semibold text-sm">Conservação e Manutenção</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Estado de Conservação</Label>
+                  <Select value={form.estado_conservacao} onValueChange={(v) => setForm((f) => ({ ...f, estado_conservacao: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ESTADO_CONSERVACAO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Última Revisão</Label>
+                  <Input type="date" value={form.data_ultima_revisao} onChange={(e) => setForm((f) => ({ ...f, data_ultima_revisao: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Próxima Revisão</Label>
+                  <Input type="date" value={form.proxima_revisao} onChange={(e) => setForm((f) => ({ ...f, proxima_revisao: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Acessórios inclusos</Label>
+                <Textarea value={form.acessorios} onChange={(e) => setForm((f) => ({ ...f, acessorios: e.target.value }))}
+                  rows={2} placeholder="Ex: case, cabo de força, controle remoto..." />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Observações</Label>
               <Textarea value={form.observacoes} onChange={(e) => setForm((f) => ({ ...f, observacoes: e.target.value }))} rows={3} />
@@ -374,13 +529,12 @@ export default function Equipamentos() {
               </Button>
             </div>
           </form>
-            );
-          })()}
         </DialogContent>
       </Dialog>
 
       <ScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onScan={handleScan} title="Escanear equipamento" />
       <QrLabelDialog open={!!labelEquip} onOpenChange={(v) => !v && setLabelEquip(null)} equipamento={labelEquip} />
+      <EquipDetailsDrawer open={!!detailsEquip} onOpenChange={(v) => !v && setDetailsEquip(null)} equipamento={detailsEquip} />
     </div>
   );
 }
