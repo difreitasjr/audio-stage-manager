@@ -19,6 +19,13 @@ export function useOrdens(filters?: { status?: string; setor_id?: string; search
   });
 }
 
+async function getResponsavelProfileId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("profiles").select("id").eq("user_id", user.id).maybeSingle();
+  return data?.id || null;
+}
+
 export function useCreateOrdem() {
   const qc = useQueryClient();
   return useMutation({
@@ -47,12 +54,26 @@ export function useCreateOrdem() {
         await supabase.from("equipamentos")
           .update({ status: "em_uso" })
           .in("id", data.itens.map(i => i.equipamento_id));
+
+        // Registrar movimentação de saída (1 por equipamento)
+        const responsavelId = await getResponsavelProfileId();
+        if (responsavelId) {
+          const movs = data.itens.map(it => ({
+            equipamento_id: it.equipamento_id,
+            tipo: "saida",
+            responsavel_id: responsavelId,
+            ordem_id: ordem.id,
+            motivo: `Saída - OS #${ordem.numero} - ${data.ordem.cliente}`,
+          }));
+          await supabase.from("movimentacao_estoque").insert(movs);
+        }
       }
       return ordem;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ordens"] });
       qc.invalidateQueries({ queryKey: ["equipamentos"] });
+      qc.invalidateQueries({ queryKey: ["movimentacoes"] });
       toast.success("Ordem de serviço criada!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -105,16 +126,35 @@ export function useRetornarOrdem() {
       const { data: items } = await supabase.from("ordem_equipamentos")
         .select("equipamento_id").eq("ordem_id", ordemId);
 
+      const { data: ordemInfo } = await supabase.from("ordens_servico")
+        .select("numero, cliente").eq("id", ordemId).maybeSingle();
+
       await supabase.from("ordens_servico").update({ status: "retornado" }).eq("id", ordemId);
 
       if (items && items.length > 0) {
         const ids = items.map(i => i.equipamento_id);
         await supabase.from("equipamentos").update({ status: "disponivel" }).in("id", ids);
+
+        // Registrar movimentação de retorno
+        const responsavelId = await getResponsavelProfileId();
+        if (responsavelId) {
+          const movs = ids.map(equipId => ({
+            equipamento_id: equipId,
+            tipo: "retorno",
+            responsavel_id: responsavelId,
+            ordem_id: ordemId,
+            motivo: ordemInfo
+              ? `Retorno - OS #${ordemInfo.numero} - ${ordemInfo.cliente}`
+              : "Retorno de OS",
+          }));
+          await supabase.from("movimentacao_estoque").insert(movs);
+        }
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ordens"] });
       qc.invalidateQueries({ queryKey: ["equipamentos"] });
+      qc.invalidateQueries({ queryKey: ["movimentacoes"] });
       toast.success("Ordem marcada como retornada!");
     },
     onError: (e: any) => toast.error(e.message),
