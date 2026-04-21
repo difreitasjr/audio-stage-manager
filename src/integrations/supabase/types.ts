@@ -16,51 +16,72 @@ export type Database = {
     Tables: {
       equipamentos: {
         Row: {
+          acessorios: string | null
           categoria: string | null
           codigo_barras: string | null
           created_at: string
           data_aquisicao: string | null
+          data_ultima_revisao: string | null
+          especificacoes: Json
+          estado_conservacao: string
+          foto_url: string | null
           id: string
           localizacao: string | null
           marca: string | null
           modelo: string | null
           nome: string
+          numero_patrimonio: string | null
           numero_serie: string | null
           observacoes: string | null
+          proxima_revisao: string | null
           setor_id: string
           status: string
           updated_at: string
           valor: number | null
         }
         Insert: {
+          acessorios?: string | null
           categoria?: string | null
           codigo_barras?: string | null
           created_at?: string
           data_aquisicao?: string | null
+          data_ultima_revisao?: string | null
+          especificacoes?: Json
+          estado_conservacao?: string
+          foto_url?: string | null
           id?: string
           localizacao?: string | null
           marca?: string | null
           modelo?: string | null
           nome: string
+          numero_patrimonio?: string | null
           numero_serie?: string | null
           observacoes?: string | null
+          proxima_revisao?: string | null
           setor_id: string
           status?: string
           updated_at?: string
           valor?: number | null
         }
         Update: {
+          acessorios?: string | null
           categoria?: string | null
           codigo_barras?: string | null
           created_at?: string
           data_aquisicao?: string | null
+          data_ultima_revisao?: string | null
+          especificacoes?: Json
+          estado_conservacao?: string
+          foto_url?: string | null
           id?: string
           localizacao?: string | null
           marca?: string | null
           modelo?: string | null
           nome?: string
+          numero_patrimonio?: string | null
           numero_serie?: string | null
           observacoes?: string | null
+          proxima_revisao?: string | null
           setor_id?: string
           status?: string
           updated_at?: string

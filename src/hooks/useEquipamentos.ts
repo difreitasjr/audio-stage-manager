@@ -21,6 +21,13 @@ type EquipFields = {
   nome?: string; numero_serie?: string; setor_id?: string; status?: string;
   localizacao?: string; data_aquisicao?: string; valor?: number; observacoes?: string;
   codigo_barras?: string; marca?: string; modelo?: string; categoria?: string;
+  especificacoes?: Record<string, any>;
+  foto_url?: string | null;
+  estado_conservacao?: string;
+  numero_patrimonio?: string;
+  data_ultima_revisao?: string | null;
+  proxima_revisao?: string | null;
+  acessorios?: string;
 };
 
 export function useCreateEquipamento() {
