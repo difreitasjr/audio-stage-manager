@@ -27,11 +27,13 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
   return <AppLayout>{children}</AppLayout>;
 }
 
-function AuthRoute({ children }: { children: React.ReactNode }) {
+/**
+ * Rota pública: sempre renderiza imediatamente (sem loading screen).
+ * Se uma sessão ativa for detectada, redireciona para /dashboard.
+ * Usada em /login para garantir que o formulário aparece de imediato.
+ */
+function PublicRoute({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  // Nunca bloqueia o render do /login com loading: se houver sessão, redireciona;
-  // caso contrário, mostra a página imediatamente. O redirect pós-login acontece
-  // na própria Login após signIn() resolver.
   if (session) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -46,7 +48,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/setup" element={<Setup />} />
-              <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
