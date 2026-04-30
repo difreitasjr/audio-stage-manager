@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
+import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Setup from "@/pages/Setup";
 import Dashboard from "@/pages/Dashboard";
@@ -38,6 +39,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Raiz: mostra Landing pública para visitantes; usuários logados vão direto ao dashboard.
+ */
+function HomeRoute() {
+  const { session } = useAuth();
+  if (session) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
@@ -49,7 +59,7 @@ const App = () => (
             <Routes>
               <Route path="/setup" element={<Setup />} />
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<HomeRoute />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
               <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
