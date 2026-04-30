@@ -28,8 +28,10 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
-  if (loading) return null;
+  const { session } = useAuth();
+  // Nunca bloqueia o render do /login com loading: se houver sessão, redireciona;
+  // caso contrário, mostra a página imediatamente. O redirect pós-login acontece
+  // na própria Login após signIn() resolver.
   if (session) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
