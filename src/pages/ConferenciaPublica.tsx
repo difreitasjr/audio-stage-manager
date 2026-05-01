@@ -393,12 +393,31 @@ export default function ConferenciaPublica() {
           })}
         </div>
 
-        {!concluida && (
-          <Button className="w-full" size="lg" onClick={finalizar} disabled={finalizando}>
-            {finalizando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Finalizar conferência ({conferidos}/{total})
-          </Button>
-        )}
+        {!concluida && (() => {
+          const faltam = total - conferidos;
+          const completo = total > 0 && faltam === 0;
+          return (
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={finalizar}
+                disabled={finalizando || !completo}
+                title={!completo ? `Faltam ${faltam} item(ns) para conferir` : ""}
+              >
+                {finalizando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {completo
+                  ? `Finalizar conferência (${conferidos}/${total})`
+                  : `Faltam ${faltam} ${faltam === 1 ? "item" : "itens"} para finalizar (${conferidos}/${total})`}
+              </Button>
+              {!completo && total > 0 && (
+                <p className="text-xs text-center text-muted-foreground">
+                  A conferência só pode ser concluída quando todos os itens forem conferidos.
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         <ScannerDialog
           open={scannerOpen}
