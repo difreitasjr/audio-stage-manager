@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Package, ClipboardList, ArrowLeftRight,
-  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown, RefreshCw,
+  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown, RefreshCw, ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ const adminNav = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/equipamentos", icon: Package, label: "Equipamentos" },
   { to: "/ordens", icon: ClipboardList, label: "Ordens de Serviço" },
+  { to: "/conferencias", icon: ClipboardCheck, label: "Conferências" },
   { to: "/movimentacao", icon: ArrowLeftRight, label: "Movimentação" },
   { to: "/manutencao", icon: Wrench, label: "Manutenção" },
   { to: "/usuarios", icon: Users, label: "Usuários" },
@@ -42,6 +43,7 @@ const staffNav = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/equipamentos", icon: Package, label: "Equipamentos" },
   { to: "/ordens", icon: ClipboardList, label: "Ordens de Serviço" },
+  { to: "/conferencias", icon: ClipboardCheck, label: "Conferências" },
   { to: "/movimentacao", icon: ArrowLeftRight, label: "Movimentação" },
   { to: "/manutencao", icon: Wrench, label: "Manutenção" },
 ];
