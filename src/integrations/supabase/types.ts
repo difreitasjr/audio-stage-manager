@@ -37,7 +37,7 @@ export type Database = {
           conferido?: boolean
           conferido_em?: string | null
           created_at?: string
-          empresa_id: string
+          empresa_id?: string
           equipamento_id?: string | null
           id?: string
           is_avulso?: boolean
@@ -107,7 +107,7 @@ export type Database = {
           conferido_por?: string | null
           created_at?: string
           destino?: Database["public"]["Enums"]["destino_retorno"]
-          empresa_id: string
+          empresa_id?: string
           equipamento_id?: string | null
           id?: string
           is_avulso?: boolean
@@ -165,7 +165,7 @@ export type Database = {
         Insert: {
           conferente_nome?: string | null
           created_at?: string
-          empresa_id: string
+          empresa_id?: string
           finalizada_em?: string | null
           id?: string
           observacoes_finais?: string | null
@@ -214,7 +214,7 @@ export type Database = {
           conferente_id?: string | null
           conferente_nome?: string | null
           created_at?: string
-          empresa_id: string
+          empresa_id?: string
           finalizada_em?: string | null
           id?: string
           iniciada_em?: string | null
@@ -303,7 +303,7 @@ export type Database = {
           created_at?: string
           data_aquisicao?: string | null
           data_ultima_revisao?: string | null
-          empresa_id: string
+          empresa_id?: string
           especificacoes?: Json
           estado_conservacao?: string
           foto_url?: string | null
@@ -381,7 +381,7 @@ export type Database = {
           data_conclusao?: string | null
           data_inicio?: string
           descricao?: string | null
-          empresa_id: string
+          empresa_id?: string
           equipamento_id: string
           id?: string
           responsavel_id?: string | null
@@ -437,7 +437,7 @@ export type Database = {
         }
         Insert: {
           data_hora?: string
-          empresa_id: string
+          empresa_id?: string
           equipamento_id: string
           id?: string
           motivo?: string | null
@@ -498,7 +498,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          empresa_id: string
+          empresa_id?: string
           equipamento_id: string
           id?: string
           observacoes?: string | null
@@ -570,7 +570,7 @@ export type Database = {
           data_retorno_prevista: string
           data_saida: string
           descricao_servico?: string | null
-          empresa_id: string
+          empresa_id?: string
           id?: string
           local_evento?: string | null
           numero?: number
@@ -640,7 +640,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
-          empresa_id: string
+          empresa_id?: string
           id?: string
           nome: string
           setor_id?: string | null
@@ -685,7 +685,7 @@ export type Database = {
         Insert: {
           created_at?: string
           descricao?: string | null
-          empresa_id: string
+          empresa_id?: string
           id?: string
           nome: string
         }
@@ -714,7 +714,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          empresa_id: string
+          empresa_id?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
