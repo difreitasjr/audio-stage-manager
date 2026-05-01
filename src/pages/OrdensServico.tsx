@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOrdens, useCreateOrdem, useUpdateOrdem, useRetornarOrdem } from "@/hooks/useOrdens";
+import { useOrdens, useCreateOrdem, useUpdateOrdem } from "@/hooks/useOrdens";
 import { useIniciarRetorno } from "@/hooks/useConferenciasRetorno";
 import { useEquipamentos } from "@/hooks/useEquipamentos";
 import { useSetores } from "@/hooks/useSetores";
@@ -68,7 +68,6 @@ export default function OrdensServico() {
 
   const createMut = useCreateOrdem();
   const updateMut = useUpdateOrdem();
-  const retornarMut = useRetornarOrdem();
   const iniciarRetorno = useIniciarRetorno();
   const navigate = useNavigate();
 
