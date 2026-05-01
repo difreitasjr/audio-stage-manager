@@ -110,12 +110,36 @@ export async function gerarOrdemPdf(ordem: any) {
     y += lines.length * 4 + 4;
   }
 
+  // QR de conferência (acima das assinaturas)
+  const pageH = doc.internal.pageSize.getHeight();
+  if (qrDataUrl && conferenciaUrl) {
+    const qrSize = 32;
+    const qrY = Math.max(y + 4, pageH - 78);
+    doc.addImage(qrDataUrl, "PNG", 14, qrY, qrSize, qrSize);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.text("Conferência de chegada", 14 + qrSize + 4, qrY + 6);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(80);
+    doc.text("Escaneie o QR para abrir a conferência", 14 + qrSize + 4, qrY + 12);
+    doc.text("(não requer login)", 14 + qrSize + 4, qrY + 17);
+    doc.setFontSize(7);
+    doc.setTextColor(120);
+    const urlLines = doc.splitTextToSize(conferenciaUrl, pageW - (14 + qrSize + 4) - 14);
+    doc.text(urlLines, 14 + qrSize + 4, qrY + 23);
+    y = qrY + qrSize + 4;
+  }
+
   // Assinaturas
-  const signY = Math.max(y + 20, doc.internal.pageSize.getHeight() - 40);
+  const signY = Math.max(y + 20, pageH - 40);
   const colW = (pageW - 28) / 2;
   doc.setDrawColor(0);
+  doc.setTextColor(0);
   doc.line(14, signY, 14 + colW - 10, signY);
   doc.line(14 + colW + 10, signY, pageW - 14, signY);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text("Responsável (Entrega)", 14 + (colW - 10) / 2, signY + 5, { align: "center" });
   doc.text("Cliente (Recebimento)", 14 + colW + 10 + (colW - 10) / 2, signY + 5, { align: "center" });
