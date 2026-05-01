@@ -172,6 +172,17 @@ export default function ConferenciaPublica() {
   };
 
   const finalizar = async () => {
+    const pendentes = itens.filter((i) => !i.conferido).length;
+    if (itens.length === 0) {
+      toast.error("Não há itens para conferir nesta ordem.");
+      return;
+    }
+    if (pendentes > 0) {
+      toast.error(
+        `Faltam ${pendentes} ${pendentes === 1 ? "item" : "itens"} para conferir. A conferência continuará em aberto.`
+      );
+      return;
+    }
     setFinalizando(true);
     try {
       await callFn(`/conferencia-finalizar`, { method: "POST", body: JSON.stringify({ token }) });
