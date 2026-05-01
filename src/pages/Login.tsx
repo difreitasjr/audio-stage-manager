@@ -66,14 +66,12 @@ export default function Login() {
               Entrar
             </Button>
           </form>
-          {adminExists === false ? (
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              Sistema novo?{" "}
-              <Link to="/setup" className="text-primary hover:underline font-semibold">
-                Criar primeiro administrador
-              </Link>
-            </div>
-          ) : null}
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Sistema novo?{" "}
+            <Link to="/setup" className="text-primary hover:underline font-semibold">
+              Criar primeiro administrador
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
