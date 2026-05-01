@@ -59,6 +59,18 @@ export default function Relatorios() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Relatórios</h2>
 
+      <Tabs defaultValue="geral">
+        <TabsList>
+          <TabsTrigger value="geral">Geral</TabsTrigger>
+          <TabsTrigger value="retornos">Retornos ao Estoque</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="retornos" className="mt-6">
+          <RelatorioRetornos />
+        </TabsContent>
+
+        <TabsContent value="geral" className="mt-6 space-y-6">
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Equipamentos por Setor</CardTitle>
@@ -142,6 +154,8 @@ export default function Relatorios() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
