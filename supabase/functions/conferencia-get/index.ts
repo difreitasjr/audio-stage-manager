@@ -1,4 +1,6 @@
 // Public endpoint: returns OS data + items for a conferencia by token.
+// Reconcilia automaticamente: insere em conferencia_itens quaisquer
+// equipamentos da OS que ainda não estejam vinculados, antes de devolver a lista.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -24,7 +26,7 @@ Deno.serve(async (req) => {
 
     const { data: conf, error: confErr } = await supabase
       .from("conferencias_chegada")
-      .select("id, ordem_id, conferente_nome, status, finalizada_em, observacoes_finais")
+      .select("id, ordem_id, empresa_id, conferente_nome, status, finalizada_em, observacoes_finais")
       .eq("token", token)
       .maybeSingle();
 
@@ -32,9 +34,39 @@ Deno.serve(async (req) => {
 
     const { data: ordem } = await supabase
       .from("ordens_servico")
-      .select("numero, cliente, contato_cliente, local_evento, data_saida, data_retorno_prevista, descricao_servico, setor_id, setores(nome)")
+      .select("numero, cliente, contato_cliente, local_evento, data_saida, data_retorno_prevista, descricao_servico, setor_id, empresa_id, setores(nome)")
       .eq("id", conf.ordem_id)
       .maybeSingle();
+
+    // --- Reconciliação: garantir que todo equipamento da OS está em conferencia_itens ---
+    const { data: ordemEquips } = await supabase
+      .from("ordem_equipamentos")
+      .select("equipamento_id, empresa_id")
+      .eq("ordem_id", conf.ordem_id);
+
+    if (ordemEquips && ordemEquips.length > 0) {
+      const { data: existentes } = await supabase
+        .from("conferencia_itens")
+        .select("equipamento_id")
+        .eq("conferencia_id", conf.id)
+        .eq("is_avulso", false)
+        .not("equipamento_id", "is", null);
+
+      const existentesSet = new Set((existentes || []).map((r: any) => r.equipamento_id));
+      const faltantes = ordemEquips.filter((oe: any) => !existentesSet.has(oe.equipamento_id));
+
+      if (faltantes.length > 0) {
+        const empresaId = conf.empresa_id || ordem?.empresa_id || faltantes[0].empresa_id;
+        const rows = faltantes.map((oe: any) => ({
+          conferencia_id: conf.id,
+          equipamento_id: oe.equipamento_id,
+          empresa_id: oe.empresa_id || empresaId,
+          is_avulso: false,
+        }));
+        // Best-effort; ignora erros de unique violation
+        await supabase.from("conferencia_itens").insert(rows as any);
+      }
+    }
 
     const { data: itens } = await supabase
       .from("conferencia_itens")

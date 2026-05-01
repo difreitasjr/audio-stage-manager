@@ -312,7 +312,7 @@ export default function ConferenciaPublica() {
         {itens.length === 0 && !concluida && (
           <Card className="border-dashed">
             <CardContent className="p-4 text-center text-sm text-muted-foreground">
-              Nenhum equipamento vinculado a esta OS. Use <strong>"Adicionar item avulso"</strong> acima para registrar o que chegou.
+              Nenhum equipamento vinculado encontrado. Se a OS já tinha equipamentos, recarregue a página. Você também pode usar <strong>"Adicionar item avulso"</strong> acima.
             </CardContent>
           </Card>
         )}
