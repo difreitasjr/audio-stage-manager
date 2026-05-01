@@ -488,6 +488,7 @@ export default function Landing() {
 
       {/* FAQ */}
       <section id="faq" className="py-24 md:py-32 bg-white/[0.02] border-y border-white/5">
+        <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-12">
             <div className="text-blue-400 text-sm font-semibold uppercase tracking-wider mb-3">FAQ</div>
             <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight">
