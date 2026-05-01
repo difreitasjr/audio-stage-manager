@@ -20,6 +20,7 @@ export type Database = {
           conferido: boolean
           conferido_em: string | null
           created_at: string
+          empresa_id: string
           equipamento_id: string | null
           id: string
           is_avulso: boolean
@@ -36,6 +37,7 @@ export type Database = {
           conferido?: boolean
           conferido_em?: string | null
           created_at?: string
+          empresa_id: string
           equipamento_id?: string | null
           id?: string
           is_avulso?: boolean
@@ -52,6 +54,7 @@ export type Database = {
           conferido?: boolean
           conferido_em?: string | null
           created_at?: string
+          empresa_id?: string
           equipamento_id?: string | null
           id?: string
           is_avulso?: boolean
@@ -71,6 +74,13 @@ export type Database = {
             referencedRelation: "conferencias_chegada"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conferencia_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       conferencia_retorno_itens: {
@@ -81,6 +91,7 @@ export type Database = {
           conferido_por: string | null
           created_at: string
           destino: Database["public"]["Enums"]["destino_retorno"]
+          empresa_id: string
           equipamento_id: string | null
           id: string
           is_avulso: boolean
@@ -96,6 +107,7 @@ export type Database = {
           conferido_por?: string | null
           created_at?: string
           destino?: Database["public"]["Enums"]["destino_retorno"]
+          empresa_id: string
           equipamento_id?: string | null
           id?: string
           is_avulso?: boolean
@@ -111,6 +123,7 @@ export type Database = {
           conferido_por?: string | null
           created_at?: string
           destino?: Database["public"]["Enums"]["destino_retorno"]
+          empresa_id?: string
           equipamento_id?: string | null
           id?: string
           is_avulso?: boolean
@@ -127,12 +140,20 @@ export type Database = {
             referencedRelation: "conferencias_retorno"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conferencia_retorno_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       conferencias_chegada: {
         Row: {
           conferente_nome: string | null
           created_at: string
+          empresa_id: string
           finalizada_em: string | null
           id: string
           observacoes_finais: string | null
@@ -144,6 +165,7 @@ export type Database = {
         Insert: {
           conferente_nome?: string | null
           created_at?: string
+          empresa_id: string
           finalizada_em?: string | null
           id?: string
           observacoes_finais?: string | null
@@ -155,6 +177,7 @@ export type Database = {
         Update: {
           conferente_nome?: string | null
           created_at?: string
+          empresa_id?: string
           finalizada_em?: string | null
           id?: string
           observacoes_finais?: string | null
@@ -163,13 +186,22 @@ export type Database = {
           token?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_chegada_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conferencias_retorno: {
         Row: {
           conferente_id: string | null
           conferente_nome: string | null
           created_at: string
+          empresa_id: string
           finalizada_em: string | null
           id: string
           iniciada_em: string | null
@@ -182,6 +214,7 @@ export type Database = {
           conferente_id?: string | null
           conferente_nome?: string | null
           created_at?: string
+          empresa_id: string
           finalizada_em?: string | null
           id?: string
           iniciada_em?: string | null
@@ -194,12 +227,45 @@ export type Database = {
           conferente_id?: string | null
           conferente_nome?: string | null
           created_at?: string
+          empresa_id?: string
           finalizada_em?: string | null
           id?: string
           iniciada_em?: string | null
           observacoes_finais?: string | null
           ordem_id?: string
           status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_retorno_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
           updated_at?: string
         }
         Relationships: []
@@ -212,6 +278,7 @@ export type Database = {
           created_at: string
           data_aquisicao: string | null
           data_ultima_revisao: string | null
+          empresa_id: string
           especificacoes: Json
           estado_conservacao: string
           foto_url: string | null
@@ -236,6 +303,7 @@ export type Database = {
           created_at?: string
           data_aquisicao?: string | null
           data_ultima_revisao?: string | null
+          empresa_id: string
           especificacoes?: Json
           estado_conservacao?: string
           foto_url?: string | null
@@ -260,6 +328,7 @@ export type Database = {
           created_at?: string
           data_aquisicao?: string | null
           data_ultima_revisao?: string | null
+          empresa_id?: string
           especificacoes?: Json
           estado_conservacao?: string
           foto_url?: string | null
@@ -279,6 +348,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "equipamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "equipamentos_setor_id_fkey"
             columns: ["setor_id"]
             isOneToOne: false
@@ -293,6 +369,7 @@ export type Database = {
           data_conclusao: string | null
           data_inicio: string
           descricao: string | null
+          empresa_id: string
           equipamento_id: string
           id: string
           responsavel_id: string | null
@@ -304,6 +381,7 @@ export type Database = {
           data_conclusao?: string | null
           data_inicio?: string
           descricao?: string | null
+          empresa_id: string
           equipamento_id: string
           id?: string
           responsavel_id?: string | null
@@ -315,6 +393,7 @@ export type Database = {
           data_conclusao?: string | null
           data_inicio?: string
           descricao?: string | null
+          empresa_id?: string
           equipamento_id?: string
           id?: string
           responsavel_id?: string | null
@@ -322,6 +401,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "manutencao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "manutencao_equipamento_id_fkey"
             columns: ["equipamento_id"]
@@ -341,6 +427,7 @@ export type Database = {
       movimentacao_estoque: {
         Row: {
           data_hora: string
+          empresa_id: string
           equipamento_id: string
           id: string
           motivo: string | null
@@ -350,6 +437,7 @@ export type Database = {
         }
         Insert: {
           data_hora?: string
+          empresa_id: string
           equipamento_id: string
           id?: string
           motivo?: string | null
@@ -359,6 +447,7 @@ export type Database = {
         }
         Update: {
           data_hora?: string
+          empresa_id?: string
           equipamento_id?: string
           id?: string
           motivo?: string | null
@@ -367,6 +456,13 @@ export type Database = {
           tipo?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "movimentacao_estoque_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "movimentacao_estoque_equipamento_id_fkey"
             columns: ["equipamento_id"]
@@ -393,6 +489,7 @@ export type Database = {
       ordem_equipamentos: {
         Row: {
           created_at: string
+          empresa_id: string
           equipamento_id: string
           id: string
           observacoes: string | null
@@ -401,6 +498,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          empresa_id: string
           equipamento_id: string
           id?: string
           observacoes?: string | null
@@ -409,6 +507,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          empresa_id?: string
           equipamento_id?: string
           id?: string
           observacoes?: string | null
@@ -416,6 +515,13 @@ export type Database = {
           quantidade?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "ordem_equipamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ordem_equipamentos_equipamento_id_fkey"
             columns: ["equipamento_id"]
@@ -443,6 +549,7 @@ export type Database = {
           data_retorno_prevista: string
           data_saida: string
           descricao_servico: string | null
+          empresa_id: string
           id: string
           local_evento: string | null
           numero: number
@@ -463,6 +570,7 @@ export type Database = {
           data_retorno_prevista: string
           data_saida: string
           descricao_servico?: string | null
+          empresa_id: string
           id?: string
           local_evento?: string | null
           numero?: number
@@ -483,6 +591,7 @@ export type Database = {
           data_retorno_prevista?: string
           data_saida?: string
           descricao_servico?: string | null
+          empresa_id?: string
           id?: string
           local_evento?: string | null
           numero?: number
@@ -494,6 +603,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ordens_servico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ordens_servico_responsavel_id_fkey"
             columns: ["responsavel_id"]
@@ -514,6 +630,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          empresa_id: string
           id: string
           nome: string
           setor_id: string | null
@@ -523,6 +640,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          empresa_id: string
           id?: string
           nome: string
           setor_id?: string | null
@@ -532,6 +650,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          empresa_id?: string
           id?: string
           nome?: string
           setor_id?: string | null
@@ -539,6 +658,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_setor_id_fkey"
             columns: ["setor_id"]
@@ -552,40 +678,62 @@ export type Database = {
         Row: {
           created_at: string
           descricao: string | null
+          empresa_id: string
           id: string
           nome: string
         }
         Insert: {
           created_at?: string
           descricao?: string | null
+          empresa_id: string
           id?: string
           nome: string
         }
         Update: {
           created_at?: string
           descricao?: string | null
+          empresa_id?: string
           id?: string
           nome?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "setores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
+          empresa_id: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          empresa_id: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          empresa_id?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -598,6 +746,7 @@ export type Database = {
         Returns: undefined
       }
       gen_conferencia_token: { Args: never; Returns: string }
+      get_user_empresa: { Args: { _user_id: string }; Returns: string }
       get_user_setor: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
