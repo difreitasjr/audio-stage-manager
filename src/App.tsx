@@ -17,6 +17,7 @@ import Manutencao from "@/pages/Manutencao";
 import Usuarios from "@/pages/Usuarios";
 import Relatorios from "@/pages/Relatorios";
 import NotFound from "@/pages/NotFound";
+import ConferenciaPublica from "@/pages/ConferenciaPublica";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
             <Routes>
               <Route path="/setup" element={<Setup />} />
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/conferencia/:token" element={<ConferenciaPublica />} />
               <Route path="/" element={<HomeRoute />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
