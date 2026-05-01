@@ -69,6 +69,8 @@ export default function OrdensServico() {
   const createMut = useCreateOrdem();
   const updateMut = useUpdateOrdem();
   const retornarMut = useRetornarOrdem();
+  const iniciarRetorno = useIniciarRetorno();
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     data_saida: "", data_retorno_prevista: "", responsavel_nome: "",
@@ -218,9 +220,11 @@ export default function OrdensServico() {
                         <Button variant="ghost" size="icon" onClick={() => setViewOrdem(o)}><Eye className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(o)} title="Editar"><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => gerarOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
-                        {o.status !== "retornado" && (
-                          <Button variant="ghost" size="sm" className="text-green-700 hover:text-green-800" onClick={() => { if (confirm(`Dar baixa na OS #${o.numero}? Os equipamentos voltarão ao estoque.`)) retornarMut.mutate(o.id); }} title="Dar baixa (retorno do evento)">
-                            <RotateCcw className="w-4 h-4 mr-1" />Baixa
+                        {o.status !== "retornado" && o.status !== "finalizada" && (
+                          <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800"
+                            onClick={() => iniciarRetorno.mutate(o.id, { onSuccess: (cid) => navigate(`/retornos/${cid}`) })}
+                            title="Iniciar conferência de retorno">
+                            <RotateCcw className="w-4 h-4 mr-1" />Retorno
                           </Button>
                         )}
                       </div>
@@ -265,9 +269,12 @@ export default function OrdensServico() {
               <ConferenciaPanel ordemId={viewOrdem.id} />
 
               <div className="flex flex-wrap gap-2 pt-2 border-t">
-                {viewOrdem.status !== "retornado" && (
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => { if (confirm(`Dar baixa na OS #${viewOrdem.numero}? Os equipamentos voltarão ao estoque.`)) { retornarMut.mutate(viewOrdem.id); setViewOrdem(null); } }}>
-                    <RotateCcw className="w-4 h-4 mr-1" />Dar baixa
+                {viewOrdem.status !== "retornado" && viewOrdem.status !== "finalizada" && (
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => iniciarRetorno.mutate(viewOrdem.id, {
+                      onSuccess: (cid) => { setViewOrdem(null); navigate(`/retornos/${cid}`); }
+                    })}>
+                    <RotateCcw className="w-4 h-4 mr-1" />Conferência de Retorno
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={() => openEdit(viewOrdem)}>
