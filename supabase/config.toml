@@ -1,1 +1,13 @@
 project_id = "czwbbvyzjpcldzvzjwtz"
+
+[functions.conferencia-get]
+verify_jwt = false
+
+[functions.conferencia-set-conferente]
+verify_jwt = false
+
+[functions.conferencia-mark-item]
+verify_jwt = false
+
+[functions.conferencia-finalizar]
+verify_jwt = false
