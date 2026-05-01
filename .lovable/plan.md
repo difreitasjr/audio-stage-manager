@@ -1,56 +1,21 @@
 ## Objetivo
 
-Incluir no PDF da Ordem de Serviço um **QR Code** apontando para o link público de conferência de chegada (`/conferencia/{token}`), para que quem receber a impressão possa escanear e abrir a conferência sem precisar de login.
+Na tela pública de **Conferência de Chegada** (`/conferencia/:token`), tornar a lista de equipamentos mais ágil colocando um **checkbox grande à esquerda de cada item** para marcar/desmarcar a conferência com um único toque, mantendo todo o restante (busca, scanner, item avulso, finalizar, etc.).
 
-## Como vai funcionar
+## Observação sobre a screenshot
 
-1. Ao gerar o PDF da OS, o sistema busca a `conferencia_chegada` vinculada à ordem.
-2. Se existir token de conferência, o PDF mostra na área de assinaturas/rodapé:
-   - Um **QR Code** (≈35x35mm) com o link `https://<dominio>/conferencia/{token}`
-   - Texto: "Escaneie para conferência de chegada"
-   - O link em texto pequeno (fallback caso a impressão fique ruim)
-3. Se a OS ainda não tiver conferência criada, o PDF é gerado normalmente sem o QR (comportamento atual).
+A tela enviada mostra "Progresso 0/0" e nenhum item — isso significa que a OS em questão foi criada **sem equipamentos** vinculados (`ordem_equipamentos` vazio). A lista renderiza normalmente quando há itens; ela só não aparece porque não há nada para listar. A melhoria abaixo já cobre o caso com itens, e adicionarei também uma mensagem amigável quando a lista estiver vazia.
 
-## Mudanças técnicas
+## Mudanças (apenas `src/pages/ConferenciaPublica.tsx`)
 
-### `src/lib/ordemPdf.ts`
-- Tornar `gerarOrdemPdf` assíncrona (`async`) para permitir gerar a imagem do QR.
-- Aceitar opcionalmente um `conferenciaUrl` no objeto `ordem` (ou parâmetro extra).
-- Gerar o QR como dataURL usando a lib `qrcode` (já implícita; se não estiver, usar `qrcode` que é leve — verificar package.json; se ausente, adicionar) e inserir via `doc.addImage()`.
-- Posicionar o QR no canto inferior esquerdo, acima da linha de assinatura, sem sobrepor o conteúdo. Ajustar o cálculo de `signY` para reservar espaço.
+1. **Substituir o botão "Conferir" por um Checkbox** (`@/components/ui/checkbox`) à esquerda do nome de cada item:
+   - Checkbox grande (`h-6 w-6`) bem visível.
+   - Ao marcar → chama `marcarPorId(it.equipamento_id, "manual")` (já existe).
+   - Ao desmarcar (item já conferido) → não removemos a marcação no banco (não há endpoint), mantém ✓ apenas visualmente reforçado; OU melhor: deixamos o checkbox sempre como ação de marcar (uma vez marcado fica verde/desabilitado).
+   - Item avulso: continua com botão lixeira para remover.
+2. **Layout do item**: `[Checkbox] [Foto] [Nome + meta] [badge avulso/lixeira]`. Cartão inteiro vira clicável (`onClick` no Card chama o checkbox toggle) para ainda mais agilidade no toque.
+3. **Mensagem para lista vazia**: quando `itens.length === 0`, mostrar card informativo "Nenhum equipamento vinculado a esta OS. Use 'Adicionar item avulso' para registrar o que chegou."
+4. Manter intactos: cabeçalho (OS/cliente/setor/conferente), barra de progresso, input de busca + scanner + sugestões, dialog de múltiplos matches, dialog de item avulso, botão "Finalizar conferência".
 
-### `src/pages/OrdensServico.tsx` (e qualquer outro local que chame `gerarOrdemPdf`)
-- Antes de chamar `gerarOrdemPdf(ordem)`, buscar o token da conferência:
-  ```ts
-  const { data: conf } = await supabase
-    .from("conferencias_chegada")
-    .select("token")
-    .eq("ordem_id", ordem.id)
-    .maybeSingle();
-  const conferenciaUrl = conf?.token
-    ? `${window.location.origin}/conferencia/${conf.token}`
-    : null;
-  await gerarOrdemPdf({ ...ordem, conferenciaUrl });
-  ```
-- Adicionar `await` na chamada (botão de gerar PDF).
-
-### Dependência
-- Verificar se `qrcode` está em `package.json`. O projeto já usa `qrcode.react` (componente React), mas para gerar dataURL no Node/browser sem render, precisamos do pacote `qrcode`. Se ausente, adicionar `qrcode` (e `@types/qrcode`).
-
-## Layout do PDF (área inferior)
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│ [QR]   Conferência de chegada                            │
-│ 35mm   Escaneie para receber os equipamentos             │
-│        https://.../conferencia/abc123...                 │
-│                                                          │
-│  ____________________        ____________________        │
-│  Responsável (Entrega)       Cliente (Recebimento)       │
-└──────────────────────────────────────────────────────────┘
-```
-
-## Arquivos afetados
-- `src/lib/ordemPdf.ts` (modificado)
-- `src/pages/OrdensServico.tsx` (chamada do PDF)
-- `package.json` (possivelmente adicionar `qrcode`)
+## Arquivo afetado
+- `src/pages/ConferenciaPublica.tsx`
