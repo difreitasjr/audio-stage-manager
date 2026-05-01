@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { CheckCircle2, ScanLine, Loader2, Package, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, ScanLine, Loader2, Package, Plus, Trash2, X, Undo2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ScannerDialog } from "@/components/ScannerDialog";
@@ -99,6 +99,18 @@ export default function ConferenciaPublica() {
       });
       toast.success("Item conferido!");
       setMultiMatches(null);
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  // Desconfere um item (caso tenha tiquetado o errado)
+  const desmarcarPorId = async (equipamento_id: string) => {
+    try {
+      await callFn(`/conferencia-mark-item`, {
+        method: "POST",
+        body: JSON.stringify({ token, equipamento_id, conferido: false, metodo: "manual" }),
+      });
+      toast.success("Item desmarcado");
       load();
     } catch (e: any) { toast.error(e.message); }
   };
@@ -335,21 +347,27 @@ export default function ConferenciaPublica() {
               ? (it.observacao ? `Obs: ${it.observacao}` : "Item avulso")
               : `${it.equipamentos?.marca || ""} ${it.equipamentos?.modelo || ""}${it.equipamentos?.numero_serie ? ` · SN ${it.equipamentos.numero_serie}` : ""}`;
             const podeMarcar = !concluida && !it.is_avulso && !it.conferido;
+            const podeDesmarcar = !concluida && !it.is_avulso && it.conferido;
             const handleToggle = () => {
               if (podeMarcar) marcarPorId(it.equipamento_id, "manual");
+              else if (podeDesmarcar) desmarcarPorId(it.equipamento_id);
             };
             return (
               <Card
                 key={it.id}
                 onClick={handleToggle}
-                className={`${it.conferido ? "border-green-500/40 bg-green-50/50" : ""} ${podeMarcar ? "cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition" : ""}`}
+                className={`${it.conferido ? "border-green-500/40 bg-green-50/50" : ""} ${(podeMarcar || podeDesmarcar) ? "cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition" : ""}`}
               >
                 <CardContent className="p-3 flex items-center gap-3">
                   {!it.is_avulso && (
                     <Checkbox
                       checked={it.conferido}
-                      disabled={concluida || it.conferido}
-                      onCheckedChange={(v) => { if (v && podeMarcar) marcarPorId(it.equipamento_id, "manual"); }}
+                      disabled={concluida}
+                      onCheckedChange={(v) => {
+                        if (concluida) return;
+                        if (v && podeMarcar) marcarPorId(it.equipamento_id, "manual");
+                        else if (!v && podeDesmarcar) desmarcarPorId(it.equipamento_id);
+                      }}
                       onClick={(e) => e.stopPropagation()}
                       className="h-6 w-6 shrink-0"
                       aria-label={`Conferir ${displayNome}`}
@@ -377,6 +395,18 @@ export default function ConferenciaPublica() {
                       </div>
                     )}
                   </div>
+                  {podeDesmarcar && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); desmarcarPorId(it.equipamento_id); }}
+                      title="Desfazer conferência"
+                      className="text-muted-foreground hover:text-destructive shrink-0"
+                    >
+                      <Undo2 className="w-4 h-4 mr-1" />
+                      Desfazer
+                    </Button>
+                  )}
                   {!concluida && it.is_avulso && (
                     <Button
                       size="sm"
