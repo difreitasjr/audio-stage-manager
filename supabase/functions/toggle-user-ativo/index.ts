@@ -39,6 +39,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "user_id e ativo (boolean) obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Validar mesma empresa (multi-tenant)
+    const { data: callerProf } = await admin.from("profiles").select("empresa_id").eq("user_id", callerId).maybeSingle();
+    const { data: targetProf } = await admin.from("profiles").select("empresa_id").eq("user_id", user_id).maybeSingle();
+    if (!callerProf?.empresa_id || callerProf.empresa_id !== targetProf?.empresa_id) {
+      return new Response(JSON.stringify({ error: "Forbidden: usuário de outra empresa" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Update profile flag (bypass RLS via service role)
     const { error: profErr } = await admin.from("profiles").update({ ativo }).eq("user_id", user_id);
     if (profErr) {

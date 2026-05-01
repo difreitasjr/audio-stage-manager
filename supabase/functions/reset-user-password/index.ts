@@ -39,6 +39,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "user_id e password (min 6 chars) obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Validar mesma empresa (multi-tenant)
+    const { data: callerProf } = await admin.from("profiles").select("empresa_id").eq("user_id", callerId).maybeSingle();
+    const { data: targetProf } = await admin.from("profiles").select("empresa_id").eq("user_id", user_id).maybeSingle();
+    if (!callerProf?.empresa_id || callerProf.empresa_id !== targetProf?.empresa_id) {
+      return new Response(JSON.stringify({ error: "Forbidden: usuário de outra empresa" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { error: updErr } = await admin.auth.admin.updateUserById(user_id, { password });
     if (updErr) {
       return new Response(JSON.stringify({ error: updErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
