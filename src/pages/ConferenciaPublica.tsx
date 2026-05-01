@@ -103,6 +103,18 @@ export default function ConferenciaPublica() {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  // Desconfere um item (caso tenha tiquetado o errado)
+  const desmarcarPorId = async (equipamento_id: string) => {
+    try {
+      await callFn(`/conferencia-mark-item`, {
+        method: "POST",
+        body: JSON.stringify({ token, equipamento_id, conferido: false, metodo: "manual" }),
+      });
+      toast.success("Item desmarcado");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   // Submete o input principal (código OU nome)
   const submeterBusca = async (override?: string) => {
     const valor = (override ?? busca).trim();
