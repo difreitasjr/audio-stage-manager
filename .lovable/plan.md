@@ -1,21 +1,37 @@
-## Objetivo
+## Problema
 
-Na tela pública de **Conferência de Chegada** (`/conferencia/:token`), tornar a lista de equipamentos mais ágil colocando um **checkbox grande à esquerda de cada item** para marcar/desmarcar a conferência com um único toque, mantendo todo o restante (busca, scanner, item avulso, finalizar, etc.).
+A tela de conferência mostra `0/0` em algumas OS porque, embora as funções de banco `create_conferencia_for_ordem` e `sync_conferencia_itens` existam, **elas não estão ligadas como triggers** (não há nenhum trigger no schema `public`). Resultado:
 
-## Observação sobre a screenshot
+- Nem toda OS criada gera automaticamente sua `conferencias_chegada`.
+- Os `conferencia_itens` não são populados a partir de `ordem_equipamentos`.
+- A regra "toda OS precisa ter equipamento" só é validada no front (pode ser burlada).
 
-A tela enviada mostra "Progresso 0/0" e nenhum item — isso significa que a OS em questão foi criada **sem equipamentos** vinculados (`ordem_equipamentos` vazio). A lista renderiza normalmente quando há itens; ela só não aparece porque não há nada para listar. A melhoria abaixo já cobre o caso com itens, e adicionarei também uma mensagem amigável quando a lista estiver vazia.
+## Correção
 
-## Mudanças (apenas `src/pages/ConferenciaPublica.tsx`)
+### 1. Backend (migração SQL)
 
-1. **Substituir o botão "Conferir" por um Checkbox** (`@/components/ui/checkbox`) à esquerda do nome de cada item:
-   - Checkbox grande (`h-6 w-6`) bem visível.
-   - Ao marcar → chama `marcarPorId(it.equipamento_id, "manual")` (já existe).
-   - Ao desmarcar (item já conferido) → não removemos a marcação no banco (não há endpoint), mantém ✓ apenas visualmente reforçado; OU melhor: deixamos o checkbox sempre como ação de marcar (uma vez marcado fica verde/desabilitado).
-   - Item avulso: continua com botão lixeira para remover.
-2. **Layout do item**: `[Checkbox] [Foto] [Nome + meta] [badge avulso/lixeira]`. Cartão inteiro vira clicável (`onClick` no Card chama o checkbox toggle) para ainda mais agilidade no toque.
-3. **Mensagem para lista vazia**: quando `itens.length === 0`, mostrar card informativo "Nenhum equipamento vinculado a esta OS. Use 'Adicionar item avulso' para registrar o que chegou."
-4. Manter intactos: cabeçalho (OS/cliente/setor/conferente), barra de progresso, input de busca + scanner + sugestões, dialog de múltiplos matches, dialog de item avulso, botão "Finalizar conferência".
+- **Anexar os triggers que faltam**:
+  - `AFTER INSERT ON ordens_servico` → `create_conferencia_for_ordem()` (cria a conferência + token automaticamente para toda OS nova).
+  - `AFTER INSERT OR DELETE ON ordem_equipamentos` → `sync_conferencia_itens()` (insere/remove o item correspondente em `conferencia_itens`).
+- **Backfill** das OS existentes:
+  - Criar `conferencias_chegada` para qualquer OS sem uma.
+  - Inserir em `conferencia_itens` qualquer `ordem_equipamentos` ainda não refletido (com `ON CONFLICT DO NOTHING`).
+- **Constraint de integridade**: garantir que toda OS tenha pelo menos 1 equipamento via função + trigger `AFTER INSERT` em `ordens_servico` que valida (deferred via verificação no fluxo) — alternativa mais segura: manter validação no app + adicionar índice único `(ordem_id, equipamento_id)` em `ordem_equipamentos` para evitar duplicados.
 
-## Arquivo afetado
-- `src/pages/ConferenciaPublica.tsx`
+### 2. Frontend
+
+- **`src/hooks/useOrdens.ts`** (`useCreateOrdem`):
+  - Lançar erro antes do insert se `itens.length === 0` (hoje só tem `toast` no componente, mas a mutation aceita lista vazia).
+  - Após inserir `ordem_equipamentos`, fazer um `select` de verificação dos `conferencia_itens` e, se vier vazio, tentar reconciliar manualmente (rede de segurança caso o trigger falhe).
+- **`src/pages/OrdensServico.tsx`** (`handleSubmit`): manter validação atual de "ao menos 1 equipamento", reforçar mensagem.
+- **`ConferenciaPanel`**: invalidar a query `["conferencia-ordem", ordemId]` ao abrir o modal de visualização (caso a conferência tenha sido criada agora pelo trigger).
+
+### 3. Verificação
+
+Após a migração, rodar `SELECT` para confirmar que toda OS tem 1 conferência e que `conferencia_itens.count == ordem_equipamentos.count` por OS.
+
+## Resultado esperado
+
+- Toda OS nova cria automaticamente sua conferência com QR/token e já vem com todos os equipamentos da OS prontos para serem ticados na tela pública.
+- OS antigas sem itens sincronizados ficam consistentes após o backfill.
+- Impossível criar OS sem equipamento (validação no app) e impossível ter equipamento da OS faltando na conferência (trigger).
