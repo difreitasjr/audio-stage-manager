@@ -13,6 +13,7 @@ export default function Setup() {
   const navigate = useNavigate();
   const { signUp, signIn } = useAuth();
   const [checking, setChecking] = useState(true);
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -26,14 +27,10 @@ export default function Setup() {
         setChecking(false);
         return;
       }
-      if (exists === true) {
-        toast.info("Já existe um administrador cadastrado. Faça login.");
-        navigate("/login", { replace: true });
-        return;
-      }
+      setAlreadyExists(exists === true);
       setChecking(false);
     })();
-  }, [navigate]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
