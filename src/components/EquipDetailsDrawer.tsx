@@ -50,6 +50,15 @@ export function EquipDetailsDrawer({ open, onOpenChange, equipamento }: Props) {
   const specValues = (equipamento.especificacoes || {}) as Record<string, any>;
   const estado = equipamento.estado_conservacao || "bom";
 
+  const fixedSpecs: Array<{ label: string; value?: string; suffix?: string }> = [
+    { label: "Voltagem", value: specValues.voltagem },
+    { label: "Potência", value: specValues.potencia_w, suffix: "W" },
+    { label: "Peso", value: specValues.peso_kg, suffix: "kg" },
+    { label: "Dimensões", value: specValues.dimensoes },
+  ];
+  const hasFixedSpecs = fixedSpecs.some((s) => s.value);
+  const customFields: Array<{ label: string; valor: string }> = Array.isArray(specValues._custom) ? specValues._custom : [];
+
   const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "—";
 
   return (
@@ -101,7 +110,22 @@ export function EquipDetailsDrawer({ open, onOpenChange, equipamento }: Props) {
               </dl>
             </section>
 
-            {/* Especificações */}
+            {/* Especificações Gerais (fixas) */}
+            {hasFixedSpecs && (
+              <>
+                <Separator />
+                <section>
+                  <h3 className="font-semibold text-sm mb-2 text-muted-foreground uppercase tracking-wide">Especificações Gerais</h3>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    {fixedSpecs.map((f) => (
+                      <Field key={f.label} label={f.label} value={f.value ? `${f.value}${f.suffix ? " " + f.suffix : ""}` : null} />
+                    ))}
+                  </dl>
+                </section>
+              </>
+            )}
+
+            {/* Especificações Técnicas (categoria) */}
             {specs.length > 0 && (
               <>
                 <Separator />
@@ -114,6 +138,21 @@ export function EquipDetailsDrawer({ open, onOpenChange, equipamento }: Props) {
                         label={f.label}
                         value={specValues[f.key] ? `${specValues[f.key]}${f.suffix ? " " + f.suffix : ""}` : null}
                       />
+                    ))}
+                  </dl>
+                </section>
+              </>
+            )}
+
+            {/* Campos personalizados */}
+            {customFields.length > 0 && (
+              <>
+                <Separator />
+                <section>
+                  <h3 className="font-semibold text-sm mb-2 text-muted-foreground uppercase tracking-wide">Informações adicionais</h3>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    {customFields.map((c, i) => (
+                      <Field key={i} label={c.label} value={c.valor} />
                     ))}
                   </dl>
                 </section>
