@@ -69,6 +69,29 @@ export default function Setup() {
     );
   }
 
+  if (alreadyExists) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+              <Info className="w-6 h-6 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Administrador já cadastrado</CardTitle>
+            <CardDescription>
+              Este sistema já possui um administrador. Use seu email e senha na tela de login.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button className="w-full" onClick={() => navigate("/login", { replace: true })}>
+              Voltar ao login
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
