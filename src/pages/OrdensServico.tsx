@@ -447,13 +447,16 @@ function ConferenciaPanel({ ordemId }: { ordemId: string }) {
   const { data: conf } = useQuery({
     queryKey: ["conferencia-ordem", ordemId],
     queryFn: async () => {
+      // Defensivo: ordena por created_at e pega a primeira, evitando que
+      // eventuais duplicatas (legacy) façam o card sumir com .maybeSingle().
       const { data, error } = await supabase
         .from("conferencias_chegada")
         .select("id, token, status, conferente_nome, finalizada_em")
         .eq("ordem_id", ordemId)
-        .maybeSingle();
+        .order("created_at", { ascending: true })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
   });
 
