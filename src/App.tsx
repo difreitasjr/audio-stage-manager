@@ -21,14 +21,16 @@ import ConferenciaPublica from "@/pages/ConferenciaPublica";
 import Conferencias from "@/pages/Conferencias";
 import Retornos from "@/pages/Retornos";
 import RetornoDetalhe from "@/pages/RetornoDetalhe";
+import BemVindo from "@/pages/BemVindo";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+function ProtectedRoute({ children, adminOnly = false, bare = false }: { children: React.ReactNode; adminOnly?: boolean; bare?: boolean }) {
   const { session, loading, isAdmin } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   if (!session) return <Navigate to="/login" replace />;
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
+  if (bare) return <>{children}</>;
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -39,7 +41,10 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
  */
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (session?.user) {
+    const seen = (() => { try { return localStorage.getItem(`welcome_seen_${session.user.id}`); } catch { return "1"; } })();
+    return <Navigate to={seen ? "/dashboard" : "/bem-vindo"} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -65,6 +70,7 @@ const App = () => (
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/conferencia/:token" element={<ConferenciaPublica />} />
               <Route path="/" element={<HomeRoute />} />
+              <Route path="/bem-vindo" element={<ProtectedRoute bare><BemVindo /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
               <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />

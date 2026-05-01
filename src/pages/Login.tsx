@@ -19,7 +19,10 @@ export default function Login() {
 
   // Se a sessão for restaurada/criada após o primeiro render, redireciona.
   useEffect(() => {
-    if (session) navigate("/dashboard", { replace: true });
+    if (session?.user) {
+      const seen = (() => { try { return localStorage.getItem(`welcome_seen_${session.user.id}`); } catch { return "1"; } })();
+      navigate(seen ? "/dashboard" : "/bem-vindo", { replace: true });
+    }
   }, [session, navigate]);
 
   useEffect(() => {
@@ -37,8 +40,8 @@ export default function Login() {
     setLoading(true);
     try {
       await signIn(email, password);
-      navigate("/dashboard");
       toast.success("Login realizado com sucesso!");
+      // o useEffect acima cuida do redirecionamento (bem-vindo no 1º acesso)
     } catch (err: any) {
       toast.error(err.message || "Erro ao fazer login");
     } finally {
