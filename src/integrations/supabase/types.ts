@@ -73,6 +73,62 @@ export type Database = {
           },
         ]
       }
+      conferencia_retorno_itens: {
+        Row: {
+          conferencia_id: string
+          conferido: boolean
+          conferido_em: string | null
+          conferido_por: string | null
+          created_at: string
+          destino: Database["public"]["Enums"]["destino_retorno"]
+          equipamento_id: string | null
+          id: string
+          is_avulso: boolean
+          nome_avulso: string | null
+          observacao: string | null
+          quantidade_conferida: number
+          quantidade_esperada: number
+        }
+        Insert: {
+          conferencia_id: string
+          conferido?: boolean
+          conferido_em?: string | null
+          conferido_por?: string | null
+          created_at?: string
+          destino?: Database["public"]["Enums"]["destino_retorno"]
+          equipamento_id?: string | null
+          id?: string
+          is_avulso?: boolean
+          nome_avulso?: string | null
+          observacao?: string | null
+          quantidade_conferida?: number
+          quantidade_esperada?: number
+        }
+        Update: {
+          conferencia_id?: string
+          conferido?: boolean
+          conferido_em?: string | null
+          conferido_por?: string | null
+          created_at?: string
+          destino?: Database["public"]["Enums"]["destino_retorno"]
+          equipamento_id?: string | null
+          id?: string
+          is_avulso?: boolean
+          nome_avulso?: string | null
+          observacao?: string | null
+          quantidade_conferida?: number
+          quantidade_esperada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencia_retorno_itens_conferencia_id_fkey"
+            columns: ["conferencia_id"]
+            isOneToOne: false
+            referencedRelation: "conferencias_retorno"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conferencias_chegada: {
         Row: {
           conferente_nome: string | null
@@ -105,6 +161,45 @@ export type Database = {
           ordem_id?: string
           status?: string
           token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conferencias_retorno: {
+        Row: {
+          conferente_id: string | null
+          conferente_nome: string | null
+          created_at: string
+          finalizada_em: string | null
+          id: string
+          iniciada_em: string | null
+          observacoes_finais: string | null
+          ordem_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          conferente_id?: string | null
+          conferente_nome?: string | null
+          created_at?: string
+          finalizada_em?: string | null
+          id?: string
+          iniciada_em?: string | null
+          observacoes_finais?: string | null
+          ordem_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          conferente_id?: string | null
+          conferente_nome?: string | null
+          created_at?: string
+          finalizada_em?: string | null
+          id?: string
+          iniciada_em?: string | null
+          observacoes_finais?: string | null
+          ordem_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -498,6 +593,10 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      finalizar_conferencia_retorno: {
+        Args: { _conf_id: string; _observacoes?: string }
+        Returns: undefined
+      }
       gen_conferencia_token: { Args: never; Returns: string }
       get_user_setor: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -507,9 +606,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      iniciar_conferencia_retorno: {
+        Args: { _ordem_id: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "staff"
+      destino_retorno: "disponivel" | "manutencao" | "danificado" | "pendente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -638,6 +742,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff"],
+      destino_retorno: ["disponivel", "manutencao", "danificado", "pendente"],
     },
   },
 } as const
