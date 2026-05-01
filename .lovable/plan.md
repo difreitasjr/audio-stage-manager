@@ -1,23 +1,94 @@
-## Permitir desconferir item na Conferência de Chegada
+## Objetivo
+SaaS pronto para vender com checkout via **Cakto**, 3 ciclos (mensal/semestral/anual), 7 dias de trial grátis e **avisos visuais de inadimplência (sem bloqueio de acesso)**.
 
-Hoje, ao tique-mark um equipamento, não há como desfazer caso tenha sido marcado por engano (o checkbox e o card ficam disabled após `conferido = true`). Vou habilitar o "desconferir" no fluxo público.
+## Preços
+| Plano | Valor |
+|---|---|
+| Mensal | R$ 149/mês |
+| Semestral | R$ 759 (~15% off) |
+| Anual | R$ 1.199 (~33% off) |
 
-### Mudanças
+Trial: **7 dias grátis** sem cartão.
 
-**1. `src/pages/ConferenciaPublica.tsx`**
-- Criar nova função `desmarcarPorId(equipamento_id)` que chama `conferencia-mark-item` com `{ token, equipamento_id, conferido: false }`. Mostra toast "Item desmarcado".
-- Ajustar a lógica do card de item (não-avulso, não-concluída):
-  - Permitir clique tanto para marcar quanto para desmarcar (toggle).
-  - Remover o `disabled={it.conferido}` do `Checkbox` e tratar `onCheckedChange` para chamar `marcar` ou `desmarcar` conforme o novo valor.
-  - Quando `it.conferido`, exibir um botão pequeno secundário "Desfazer" (ícone `Undo2` + texto), à direita do card, que dispara `desmarcarPorId`. Mantém o card visualmente em verde, mas com a ação clara para corrigir engano.
-- Para itens **avulsos** já marcados, manter o botão Trash (remover) como hoje — desconferir não se aplica porque eles só existem se foram conferidos.
-- Após desmarcar, recarregar via `load()` para atualizar progresso.
+## Como vai funcionar a Cakto
+A Cakto é uma plataforma brasileira de checkout (cartão, Pix, boleto). O fluxo é:
 
-**2. Backend — sem alterações**
-- `supabase/functions/conferencia-mark-item/index.ts` já trata `conferido: false` no fluxo `equipamento_id`, limpando `conferido_em`. Bloqueia corretamente quando a conferência está `concluida`.
+1. Você cria os 3 produtos no painel da Cakto (Mensal/Semestral/Anual) e gera 3 **links de checkout**.
+2. Configura o **Pixel/Webhook** da Cakto apontando para nosso endpoint, para receber notificações de pagamento aprovado, recusado, estornado, etc.
+3. No nosso sistema, os botões "Assinar" abrem o link de checkout da Cakto correspondente, passando o `empresa_id` no campo de identificação externa (`external_id` ou metadata).
+4. Quando a Cakto confirma pagamento, o webhook atualiza `empresas.status_assinatura = 'ativa'`.
 
-**3. Validação de finalização — sem alterações**
-- A regra continua valendo: só finaliza com 100% conferidos. Desmarcar reduz o progresso e desabilita o botão "Finalizar" automaticamente.
+## O que será construído
 
-### Resultado
-- Usuário marca item errado → clica em "Desfazer" no card (ou desmarca o checkbox) → item volta para pendente, progresso recalcula, botão de finalizar fica bloqueado até reconferir corretamente.
+### 1. Banco de dados
+Adicionar à tabela `empresas`:
+- `plano` ('trial' | 'mensal' | 'semestral' | 'anual')
+- `status_assinatura` ('trial' | 'ativa' | 'atrasada' | 'cancelada')
+- `trial_inicio`, `trial_fim`
+- `assinatura_inicio`, `assinatura_proxima_cobranca`
+- `cakto_customer_id`, `cakto_subscription_id`, `cakto_last_event`
+
+Nova tabela `pagamentos`:
+- Histórico de transações vindas da Cakto (id, valor, status, método, data, raw_payload)
+
+### 2. Edge function `cakto-webhook`
+- Recebe POST da Cakto
+- Valida assinatura/secret do webhook
+- Atualiza `empresas.status_assinatura` e grava em `pagamentos`
+- Eventos tratados: `payment.approved`, `payment.refused`, `subscription.canceled`, `subscription.renewed`, `chargeback`
+
+### 3. Tela "Minha Assinatura" (`/assinatura`)
+- Plano atual + status (trial / ativa / atrasada)
+- Dias restantes (no trial) ou próxima cobrança (assinatura ativa)
+- 3 cards de plano com botão **"Assinar agora"** → abre link da Cakto em nova aba
+- Histórico de pagamentos (da tabela `pagamentos`)
+- Suporte: link/WhatsApp para falar com você (admin do SaaS)
+
+### 4. Avisos visuais (SEM bloqueio)
+Banner no topo do `AppLayout` com cores diferentes:
+- **Trial ativo (verde/azul):** "Você está no período de teste — faltam X dias. [Assinar agora]"
+- **Trial expirando (amarelo, últimos 2 dias):** "Seu teste termina em X dias!"
+- **Trial expirado / sem assinatura (laranja):** "Seu teste expirou. Assine para continuar com tranquilidade. [Ver planos]"
+- **Pagamento atrasado (vermelho):** "⚠️ Identificamos um problema com seu pagamento. Por favor, regularize. [Ir para assinatura]"
+
+O sistema **continua funcionando normalmente** em todos os casos — apenas o banner muda. O usuário consegue cadastrar equipamentos, criar OS, etc., mesmo inadimplente.
+
+### 5. Fluxo de cadastro novo (`Cadastro.tsx`)
+1. Cliente preenche dados da empresa + admin
+2. Conta criada com `status_assinatura = 'trial'` e `trial_fim = hoje + 7 dias`
+3. Entra direto no sistema
+4. Vê banner verde de trial e pode assinar a qualquer momento
+
+### 6. Landing page
+Adicionar seção **Preços** com os 3 planos lado a lado, destaque visual no Anual ("Mais vendido — economize 33%"), CTA "Começar 7 dias grátis".
+
+### 7. Configuração da Cakto (você faz no painel deles)
+Vou te entregar:
+- A **URL do webhook** para colar no painel Cakto
+- O **nome do campo** que você precisa configurar no checkout para passar o `empresa_id` (chamado `external_id` ou `metadata.empresa_id`)
+- Onde colar os 3 **links de checkout** (Mensal/Semestral/Anual) na tela de assinatura
+
+Você precisará me passar 1 secret (configuro com você):
+- `CAKTO_WEBHOOK_SECRET` — secret de validação do webhook (gerado no painel da Cakto)
+
+## Detalhes técnicos
+- **Multi-tenant já está pronto** ✅ — não mexemos.
+- **Sem bloqueio de acesso**: nenhum middleware corta funcionalidade. A função `empresa_tem_acesso()` existe apenas para o frontend exibir o banner correto.
+- **Webhook idempotente**: usa `cakto_event_id` único para não processar o mesmo evento 2x.
+- **Trial automático**: trigger no banco preenche `trial_fim = trial_inicio + 7 dias` ao criar empresa.
+- **Cron diário** (opcional, edge function agendada): atualiza `status_assinatura` para `'atrasada'` quando `assinatura_proxima_cobranca < hoje`.
+
+## Itens fora do código (você cuida)
+- Criar conta Cakto e os 3 produtos (Mensal/Semestral/Anual) com cobrança recorrente
+- Termos de Uso e Política de Privacidade (LGPD)
+- Domínio próprio
+- CNPJ para nota fiscal
+
+## Ordem de execução
+1. Migration (campos de assinatura em `empresas` + tabela `pagamentos` + função `empresa_tem_acesso`)
+2. Edge function `cakto-webhook`
+3. Tela `/assinatura` com 3 planos e histórico
+4. Banner de status no `AppLayout`
+5. Atualizar `Cadastro.tsx` para criar trial de 7 dias
+6. Atualizar Landing com seção de preços
+7. Te entregar URL do webhook + instruções para configurar no painel Cakto
