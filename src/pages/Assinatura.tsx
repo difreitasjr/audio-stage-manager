@@ -12,9 +12,9 @@ import { Navigate } from "react-router-dom";
 // COLE AQUI OS LINKS DE CHECKOUT DA CAKTO (após criar produtos)
 // ============================================================
 const CAKTO_LINKS = {
-  mensal: "https://pay.cakto.com.br/SEU-LINK-MENSAL",
-  semestral: "https://pay.cakto.com.br/SEU-LINK-SEMESTRAL",
-  anual: "https://pay.cakto.com.br/SEU-LINK-ANUAL",
+  mensal: "https://pay.cakto.com.br/36unis7_869634",
+  semestral: "https://pay.cakto.com.br/thm7ybr",
+  anual: "https://pay.cakto.com.br/xkk3bqc",
 };
 
 const planos = [
