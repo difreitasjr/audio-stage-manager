@@ -81,6 +81,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conferencia_itens_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
         ]
       }
       conferencia_retorno_itens: {

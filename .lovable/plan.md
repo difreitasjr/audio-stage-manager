@@ -1,32 +1,40 @@
-Vou corrigir a falha onde a conferência pública pode abrir sem mostrar os equipamentos vinculados à OS, mesmo quando eles existem na ordem.
+Identifiquei que a OS #4 já tem 4 equipamentos vinculados e a tabela de itens da conferência também tem 4 registros, mas o endpoint público `conferencia-get` ainda devolve `itens: []`. O motivo mais provável é que o select aninhado `equipamentos(...)` não está retornando corretamente porque falta uma chave estrangeira explícita de `conferencia_itens.equipamento_id` para `equipamentos.id` no banco/tipos. Sem isso, a tela recebe lista vazia e mostra 0/0.
 
-Plano:
+Plano de correção:
 
-1. Ajustar o backend da conferência pública
-   - No endpoint `conferencia-get`, além de buscar `conferencia_itens`, vou reconciliar automaticamente a conferência com os equipamentos reais da OS.
-   - Se a OS tiver itens em `ordem_equipamentos` que ainda não existem em `conferencia_itens`, o endpoint vai inserir esses vínculos antes de devolver a lista para a tela.
-   - Assim, ao clicar em “Abrir” para conferência, a lista será preenchida mesmo se o trigger do banco não tiver rodado ou estiver ausente.
+1. Corrigir o relacionamento no banco
+   - Criar uma migração adicionando a foreign key faltante:
+     - `conferencia_itens.equipamento_id -> equipamentos.id`
+   - Manter compatível com item avulso, pois `equipamento_id` pode ser nulo quando `is_avulso = true`.
+   - Preservar os índices/constraints únicos já existentes, sem apagar dados.
 
-2. Corrigir a automação no banco
-   - O contexto do banco mostra que atualmente não há triggers ativos em `ordens_servico` / `ordem_equipamentos`, por isso a sincronização automática não está garantida.
-   - Vou criar uma migração para recriar os triggers corretos:
-     - ao criar uma OS, criar a conferência de chegada se ainda não existir;
-     - ao inserir equipamento na OS, criar o item correspondente na conferência;
-     - ao remover equipamento da OS, remover o item correspondente da conferência.
-   - A migração também fará um backfill/reconciliação de todas as OS existentes, sem duplicar dados.
+2. Ajustar o endpoint `conferencia-get` para não depender do join automático
+   - Trocar o select aninhado por uma busca em duas etapas:
+     - buscar todos os `conferencia_itens` da conferência;
+     - buscar os equipamentos correspondentes em `equipamentos` por `.in('id', ids)`;
+     - montar manualmente cada item com a propriedade `equipamentos` que a tela já usa.
+   - Isso elimina a chance de a lista sumir por causa de cache de schema/relacionamento.
+   - Também vou manter a reconciliação automática já criada: se a OS tiver equipamento em `ordem_equipamentos`, o endpoint garante o registro em `conferencia_itens` antes de responder.
 
-3. Tornar a função de sincronização mais segura
-   - Vou garantir que a função `sync_conferencia_itens` crie a conferência caso ainda não exista quando um equipamento for vinculado à OS.
-   - Também vou preservar `empresa_id` nos registros, seguindo o padrão multiempresa já existente.
-   - Vou manter os índices únicos já usados para evitar duplicação.
+3. Aplicar o mesmo padrão no `conferencia-mark-item`
+   - A busca por nome hoje também usa `equipamentos:equipamento_id(...)`.
+   - Vou ajustar para buscar itens + equipamentos separadamente e montar os matches manualmente.
+   - Assim, pesquisar por nome e selecionar sugestão continua funcionando mesmo sem depender de relacionamento implícito.
 
-4. Melhorar a tela de conferência
-   - Manterei todo o layout existente, incluindo busca, scanner, item avulso e checkbox.
-   - Vou ajustar a mensagem de lista vazia para não sugerir que a OS não tem equipamentos antes de uma tentativa real de sincronização.
-   - Se houver equipamentos vinculados, a tela deve mostrar a lista com os seletores para ticar/conferir.
+4. Melhorar a tela para diagnosticar caso volte a acontecer
+   - Se o endpoint retornar algum erro real, a tela vai mostrar a mensagem de erro em vez de apenas parecer “sem equipamentos”.
+   - A mensagem vazia será ajustada para indicar que a OS não tem itens sincronizados apenas quando a API realmente retornar lista vazia.
+
+5. Validar com a OS #4
+   - Após implementar, testar o endpoint do token `svksea77rd92` e confirmar que volta com 4 itens.
+   - Conferir que a tela deve sair de `0/0` e passar para `0/4`, exibindo:
+     - Monitor de Palco 12"
+     - Microfone Sem Fio de Mão
+     - Caixa Acústica Ativa 15"
+     - Subwoofer Ativo 18"
 
 Resultado esperado:
-- Toda OS com equipamentos passa a abrir a conferência com esses equipamentos listados.
-- A tela deixa de ficar em `0/0` quando a OS possui itens vinculados.
-- A sincronização passa a funcionar tanto para OS novas quanto para OS antigas.
-- O restante da funcionalidade permanece igual.
+- Ao clicar em “Abrir” na Conferência de chegada, a lista aparece com todos os equipamentos vinculados à OS.
+- A conferência não fica mais em `0/0` quando a OS possui equipamentos.
+- Equipamentos avulsos continuam funcionando.
+- O vínculo entre OS, conferência e equipamentos fica corrigido no banco e também protegido no endpoint.
