@@ -10,6 +10,7 @@ interface Profile {
   nome: string;
   setor_id: string | null;
   ativo: boolean;
+  empresa_id: string;
 }
 
 interface AuthContextType {
@@ -20,7 +21,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, nome: string) => Promise<void>;
+  signUp: (email: string, password: string, nome: string, empresaNome: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -53,7 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
         if (session?.user) {
-          // defer to avoid deadlocks inside the auth callback
           setTimeout(() => fetchUserData(session.user.id), 0);
         } else {
           setProfile(null);
@@ -90,16 +90,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, nome: string) => {
+  const signUp = async (email: string, password: string, nome: string, empresaNome: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { nome },
+        data: { nome, empresa_nome: empresaNome },
       },
     });
-    if (error) throw error;
+    if (error) {
+      // Mensagem amigável para email duplicado
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("user already")) {
+        throw new Error("Este email já está cadastrado. Faça login.");
+      }
+      throw error;
+    }
   };
 
   const signOut = async () => {

@@ -67,9 +67,9 @@ export default function Login() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            Sistema novo?{" "}
-            <Link to="/setup" className="text-primary hover:underline font-semibold">
-              Criar primeiro administrador
+            Primeiro acesso da sua empresa?{" "}
+            <Link to="/cadastro" className="text-primary hover:underline font-semibold">
+              Cadastrar nova empresa
             </Link>
           </div>
         </CardContent>

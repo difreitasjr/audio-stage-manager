@@ -63,7 +63,7 @@ export default function Usuarios() {
       if (editProfile.role_id) {
         await supabase.from("user_roles").update({ role: form.role as any }).eq("id", editProfile.role_id);
       } else {
-        await supabase.from("user_roles").insert({ user_id: editProfile.user_id, role: form.role as any });
+        await supabase.from("user_roles").insert({ user_id: editProfile.user_id, role: form.role as any } as any);
       }
     },
     onSuccess: () => {

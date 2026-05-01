@@ -45,11 +45,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Senha deve ter pelo menos 6 caracteres" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Empresa do admin chamador (multi-tenant)
+    const { data: callerProfile } = await admin.from("profiles").select("empresa_id").eq("user_id", callerId).maybeSingle();
+    const empresa_id = callerProfile?.empresa_id;
+    if (!empresa_id) {
+      return new Response(JSON.stringify({ error: "Admin sem empresa vinculada" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { nome },
+      user_metadata: { nome, empresa_id, role, setor_id: setor_id || null },
     });
     if (createErr || !created.user) {
       return new Response(JSON.stringify({ error: createErr?.message || "Falha ao criar usuário" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -57,15 +64,10 @@ Deno.serve(async (req) => {
 
     const newUserId = created.user.id;
 
-    // The handle_new_user trigger creates a profile. Update setor_id.
+    // O trigger handle_new_user já cria profile + role com empresa_id correto.
+    // Ajustar setor_id e role caso difiram do default do trigger.
     await admin.from("profiles").update({ nome, setor_id: setor_id || null }).eq("user_id", newUserId);
-
-    // Insert role (avoid duplicate)
-    await admin.from("user_roles").delete().eq("user_id", newUserId);
-    const { error: roleInsErr } = await admin.from("user_roles").insert({ user_id: newUserId, role });
-    if (roleInsErr) {
-      return new Response(JSON.stringify({ error: roleInsErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    await admin.from("user_roles").update({ role }).eq("user_id", newUserId);
 
     return new Response(JSON.stringify({ ok: true, user_id: newUserId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
