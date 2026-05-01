@@ -13,11 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, RotateCcw, ScanLine, FileDown, Pencil } from "lucide-react";
+import { Plus, Search, Eye, RotateCcw, ScanLine, FileDown, Pencil, Link2, QrCode, Copy } from "lucide-react";
 import { ScannerDialog } from "@/components/ScannerDialog";
 import { findEquipamentoByCode } from "@/hooks/useEquipamentos";
 import { gerarOrdemPdf } from "@/lib/ordemPdf";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { QRCodeSVG } from "qrcode.react";
 
 const statusLabels: Record<string, string> = {
   aberta: "Aberta", em_andamento: "Em Andamento", retornado: "Retornado", atrasada: "Atrasada",
@@ -214,8 +217,8 @@ export default function OrdensServico() {
                         <Button variant="ghost" size="icon" onClick={() => openEdit(o)} title="Editar"><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => gerarOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
                         {o.status !== "retornado" && (
-                          <Button variant="ghost" size="icon" onClick={() => retornarMut.mutate(o.id)}>
-                            <RotateCcw className="w-4 h-4 text-green-600" />
+                          <Button variant="ghost" size="sm" className="text-green-700 hover:text-green-800" onClick={() => { if (confirm(`Dar baixa na OS #${o.numero}? Os equipamentos voltarão ao estoque.`)) retornarMut.mutate(o.id); }} title="Dar baixa (retorno do evento)">
+                            <RotateCcw className="w-4 h-4 mr-1" />Baixa
                           </Button>
                         )}
                       </div>
@@ -231,9 +234,8 @@ export default function OrdensServico() {
         </CardContent>
       </Card>
 
-      {/* View Dialog */}
       <Dialog open={!!viewOrdem} onOpenChange={() => setViewOrdem(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Ordem de Serviço #{viewOrdem?.numero}</DialogTitle>
           </DialogHeader>
@@ -257,16 +259,19 @@ export default function OrdensServico() {
                   {(!viewOrdem.ordem_equipamentos || viewOrdem.ordem_equipamentos.length === 0) && <li className="text-muted-foreground">Nenhum equipamento</li>}
                 </ul>
               </div>
-              <div className="flex gap-4">
-                <span>✅ Funciona: {viewOrdem.checklist_funciona ? "Sim" : "Não"}</span>
-                <span>✅ Acessórios: {viewOrdem.checklist_acessorios ? "Sim" : "Não"}</span>
-                <span>✅ Completo: {viewOrdem.checklist_completo ? "Sim" : "Não"}</span>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
+
+              <ConferenciaPanel ordemId={viewOrdem.id} />
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                {viewOrdem.status !== "retornado" && (
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => { if (confirm(`Dar baixa na OS #${viewOrdem.numero}? Os equipamentos voltarão ao estoque.`)) { retornarMut.mutate(viewOrdem.id); setViewOrdem(null); } }}>
+                    <RotateCcw className="w-4 h-4 mr-1" />Dar baixa
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" onClick={() => openEdit(viewOrdem)}>
                   <Pencil className="w-4 h-4 mr-1" />Editar
                 </Button>
-                <Button size="sm" onClick={() => gerarOrdemPdf(viewOrdem)}>
+                <Button size="sm" variant="outline" onClick={() => gerarOrdemPdf(viewOrdem)}>
                   <FileDown className="w-4 h-4 mr-1" />Baixar PDF
                 </Button>
               </div>

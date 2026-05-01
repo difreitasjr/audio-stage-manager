@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Power, KeyRound } from "lucide-react";
+import { Plus, Pencil, Power, KeyRound, Shield, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Usuarios() {
@@ -25,6 +25,7 @@ export default function Usuarios() {
   const [resetUser, setResetUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmDeactivate, setConfirmDeactivate] = useState<any>(null);
+  const [permsOpen, setPermsOpen] = useState(false);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -136,11 +137,18 @@ export default function Usuarios() {
           <h2 className="text-2xl font-bold">Usuários</h2>
           <p className="text-muted-foreground text-sm">{users.length} usuário(s)</p>
         </div>
-        {isAdmin && (
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />Novo Usuário
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={() => setPermsOpen(true)}>
+              <Shield className="w-4 h-4 mr-1" />Permissões
+            </Button>
+          )}
+          {isAdmin && (
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />Novo Usuário
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -201,7 +209,7 @@ export default function Usuarios() {
         </CardContent>
       </Card>
 
-      {/* Create */}
+      {/* Dialog: Criar */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Usuário</DialogTitle></DialogHeader>
@@ -246,7 +254,7 @@ export default function Usuarios() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit */}
+      {/* Dialog: Editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
@@ -264,23 +272,7 @@ export default function Usuarios() {
                   {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
-      {/* Reset Password */}
-      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) { setResetUser(null); setNewPassword(""); } }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Redefinir senha — {resetUser?.nome}</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; } resetPasswordMut.mutate(); }} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nova senha *</Label>
-              <Input type="password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => { setResetUser(null); setNewPassword(""); }}>Cancelar</Button>
-              <Button type="submit" disabled={resetPasswordMut.isPending}>{resetPasswordMut.isPending ? "Salvando..." : "Redefinir"}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
             <div className="space-y-2">
               <Label>Role</Label>
               <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
@@ -302,6 +294,68 @@ export default function Usuarios() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog: Redefinir senha */}
+      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) { setResetUser(null); setNewPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Redefinir senha — {resetUser?.nome}</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; } resetPasswordMut.mutate(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nova senha *</Label>
+              <Input type="password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => { setResetUser(null); setNewPassword(""); }}>Cancelar</Button>
+              <Button type="submit" disabled={resetPasswordMut.isPending}>{resetPasswordMut.isPending ? "Salvando..." : "Redefinir"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Permissões */}
+      <Dialog open={permsOpen} onOpenChange={setPermsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary" />O que cada papel pode fazer</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Recurso</TableHead>
+                  <TableHead>Admin</TableHead>
+                  <TableHead>Staff</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  ["Equipamentos — ver/criar/editar", "Todos os setores", "Apenas do próprio setor"],
+                  ["Equipamentos — excluir", "✓", "—"],
+                  ["Ordens de Serviço — ver/criar/editar", "Todas", "Apenas do próprio setor"],
+                  ["Ordens — excluir", "✓", "—"],
+                  ["Movimentação de estoque", "Tudo", "Ver/criar do próprio setor"],
+                  ["Manutenção", "Tudo", "Ver/criar/editar do próprio setor"],
+                  ["Usuários", "Criar, editar, ativar, redefinir senha", "Sem acesso"],
+                  ["Setores — criar/editar/excluir", "✓", "—"],
+                  ["Setores — visualizar", "✓", "✓"],
+                  ["Relatórios", "✓", "—"],
+                  ["Conferência de chegada (link público)", "Disponível em todas as OS", "Disponível nas OS do próprio setor"],
+                ].map(([recurso, a, s]) => (
+                  <TableRow key={recurso}>
+                    <TableCell className="text-sm font-medium">{recurso}</TableCell>
+                    <TableCell className="text-sm">{a}</TableCell>
+                    <TableCell className="text-sm">{s}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            As permissões são reforçadas no banco de dados (RLS), independente do que apareça na interface.
+          </p>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!confirmDeactivate} onOpenChange={(o) => { if (!o) setConfirmDeactivate(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

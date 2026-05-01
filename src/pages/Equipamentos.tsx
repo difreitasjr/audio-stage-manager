@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEquipamentos, useCreateEquipamento, useUpdateEquipamento, useDeleteEquipamento, findEquipamentoByCode } from "@/hooks/useEquipamentos";
 import { useSetores } from "@/hooks/useSetores";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,11 @@ const statusColors: Record<string, string> = {
   danificado: "bg-red-100 text-red-800", manutencao: "bg-yellow-100 text-yellow-800",
 };
 
+interface CustomField {
+  label: string;
+  valor: string;
+}
+
 interface EquipForm {
   nome: string; numero_serie: string; setor_id: string; status: string;
   observacoes: string;
@@ -37,7 +43,12 @@ interface EquipForm {
   proxima_revisao: string;
   acessorios: string;
   foto_url: string;
+  voltagem: string;
+  peso_kg: string;
+  dimensoes: string;
+  potencia_w: string;
   especificacoes: Record<string, any>;
+  custom_fields: CustomField[];
 }
 
 const emptyForm: EquipForm = {
@@ -50,10 +61,14 @@ const emptyForm: EquipForm = {
   proxima_revisao: "",
   acessorios: "",
   foto_url: "",
+  voltagem: "",
+  peso_kg: "",
+  dimensoes: "",
+  potencia_w: "",
   especificacoes: {},
+  custom_fields: [],
 };
 
-// Presets por setor: categoria -> lista de equipamentos comuns
 const PRESETS: Record<string, Record<string, string[]>> = {
   video: {
     "Projetor": ["Epson PowerLite 5000lm", "Epson PowerLite 7000lm", "Epson Pro L1100U", "Optoma ZU720", "Panasonic PT-RZ970"],
@@ -98,8 +113,11 @@ const setorKey = (nome: string): string => {
   return "";
 };
 
+const FIXED_SPEC_KEYS = ["voltagem", "peso_kg", "dimensoes", "potencia_w", "descricao", "_custom"];
+
 export default function Equipamentos() {
   const { isAdmin } = useAuth();
+  const qc = useQueryClient();
   const [filters, setFilters] = useState({ setor_id: "", status: "", search: "", conservacao: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -108,6 +126,8 @@ export default function Equipamentos() {
   const [labelEquip, setLabelEquip] = useState<any | null>(null);
   const [detailsEquip, setDetailsEquip] = useState<any | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [novoSetorOpen, setNovoSetorOpen] = useState(false);
+  const [novoSetorNome, setNovoSetorNome] = useState("");
 
   const activeFilters = {
     setor_id: filters.setor_id || undefined,
@@ -126,6 +146,9 @@ export default function Equipamentos() {
   const openCreate = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
 
   const openEdit = (e: any) => {
+    const especs = (e.especificacoes || {}) as Record<string, any>;
+    // Custom fields = anything stored in especs._custom (array)
+    const custom_fields: CustomField[] = Array.isArray(especs._custom) ? especs._custom : [];
     setEditId(e.id);
     setForm({
       nome: e.nome, numero_serie: e.numero_serie || "", setor_id: e.setor_id, status: e.status,
@@ -138,7 +161,12 @@ export default function Equipamentos() {
       proxima_revisao: e.proxima_revisao || "",
       acessorios: e.acessorios || "",
       foto_url: e.foto_url || "",
-      especificacoes: e.especificacoes || {},
+      voltagem: especs.voltagem || "",
+      peso_kg: especs.peso_kg || "",
+      dimensoes: especs.dimensoes || "",
+      potencia_w: especs.potencia_w || "",
+      especificacoes: especs,
+      custom_fields,
     });
     setDialogOpen(true);
   };
@@ -160,16 +188,48 @@ export default function Equipamentos() {
     }
   };
 
+  const handleCriarSetor = async () => {
+    if (!novoSetorNome.trim()) return;
+    const { data, error } = await supabase.from("setores").insert({ nome: novoSetorNome.trim() }).select().single();
+    if (error) {
+      toast.error(error.message || "Erro ao criar setor");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["setores"] });
+    setForm((f) => ({ ...f, setor_id: data.id, categoria: "", nome: "" }));
+    setNovoSetorOpen(false);
+    setNovoSetorNome("");
+    toast.success(`Setor "${data.nome}" criado!`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome || !form.setor_id) {
       toast.error("Nome e Setor são obrigatórios");
       return;
     }
+    if (!form.observacoes.trim()) {
+      toast.error("Descrição/Observações é obrigatório");
+      return;
+    }
+
+    // Merge especificações: campos predefinidos por categoria já estão em form.especificacoes,
+    // adicionamos os fixos (voltagem etc) e os custom.
+    const merged: Record<string, any> = { ...form.especificacoes };
+    if (form.voltagem) merged.voltagem = form.voltagem;
+    if (form.peso_kg) merged.peso_kg = form.peso_kg;
+    if (form.dimensoes) merged.dimensoes = form.dimensoes;
+    if (form.potencia_w) merged.potencia_w = form.potencia_w;
+    if (form.custom_fields.length > 0) {
+      merged._custom = form.custom_fields.filter(c => c.label.trim() && c.valor.trim());
+    } else {
+      delete merged._custom;
+    }
+
     const payload: any = {
       nome: form.nome, numero_serie: form.numero_serie || undefined,
       setor_id: form.setor_id, status: form.status,
-      observacoes: form.observacoes || undefined,
+      observacoes: form.observacoes,
       marca: form.marca || undefined, modelo: form.modelo || undefined,
       categoria: form.categoria || undefined,
       codigo_barras: form.codigo_barras || undefined,
@@ -179,7 +239,7 @@ export default function Equipamentos() {
       proxima_revisao: form.proxima_revisao || null,
       acessorios: form.acessorios || undefined,
       foto_url: form.foto_url || null,
-      especificacoes: form.especificacoes || {},
+      especificacoes: merged,
     };
     if (editId) await updateMut.mutateAsync({ id: editId, ...payload });
     else await createMut.mutateAsync(payload);
@@ -222,6 +282,19 @@ export default function Equipamentos() {
   const categoriasPreset = sKey && PRESETS[sKey] ? Object.keys(PRESETS[sKey]) : [];
   const nomesPreset = sKey && form.categoria && PRESETS[sKey]?.[form.categoria] ? PRESETS[sKey][form.categoria] : [];
   const specFields = getSpecFields(form.categoria);
+
+  const addCustomField = () => {
+    setForm((f) => ({ ...f, custom_fields: [...f.custom_fields, { label: "", valor: "" }] }));
+  };
+  const updateCustomField = (idx: number, key: "label" | "valor", v: string) => {
+    setForm((f) => ({
+      ...f,
+      custom_fields: f.custom_fields.map((c, i) => i === idx ? { ...c, [key]: v } : c),
+    }));
+  };
+  const removeCustomField = (idx: number) => {
+    setForm((f) => ({ ...f, custom_fields: f.custom_fields.filter((_, i) => i !== idx) }));
+  };
 
   return (
     <div className="space-y-4">
@@ -361,10 +434,24 @@ export default function Equipamentos() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Setor *</Label>
-                <Select value={form.setor_id} onValueChange={(v) => setForm((f) => ({ ...f, setor_id: v, categoria: "", nome: "" }))}>
+                <Select
+                  value={form.setor_id}
+                  onValueChange={(v) => {
+                    if (v === "__novo__") {
+                      setNovoSetorOpen(true);
+                      return;
+                    }
+                    setForm((f) => ({ ...f, setor_id: v, categoria: "", nome: "" }));
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                    {isAdmin && (
+                      <SelectItem value="__novo__" className="text-primary font-medium">
+                        + Criar novo setor…
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -385,14 +472,15 @@ export default function Equipamentos() {
                   <>
                     <Input list="categorias-list" value={form.categoria}
                       onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, nome: "", especificacoes: {} }))}
-                      placeholder="Selecione ou digite" />
+                      placeholder="Selecione ou digite livremente" />
                     <datalist id="categorias-list">
                       {categoriasPreset.map((c) => <option key={c} value={c} />)}
                     </datalist>
                   </>
                 ) : (
-                  <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, especificacoes: {} }))} placeholder="Selecione setor primeiro" disabled={!form.setor_id} />
+                  <Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value, especificacoes: {} }))} placeholder="Digite a categoria livremente" />
                 )}
+                <p className="text-xs text-muted-foreground">Você pode digitar qualquer categoria — usada para agrupar relatórios.</p>
               </div>
               <div className="space-y-2">
                 <Label>Nome *</Label>
@@ -435,6 +523,18 @@ export default function Equipamentos() {
               </div>
             </div>
 
+            {/* Descrição obrigatória */}
+            <div className="space-y-2">
+              <Label>Descrição / Observações *</Label>
+              <Textarea
+                value={form.observacoes}
+                onChange={(e) => setForm((f) => ({ ...f, observacoes: e.target.value }))}
+                rows={3}
+                required
+                placeholder="Descreva o equipamento, características, condição, etc."
+              />
+            </div>
+
             {/* Foto */}
             <div className="space-y-2">
               <Label>Foto</Label>
@@ -458,10 +558,42 @@ export default function Equipamentos() {
               )}
             </div>
 
-            {/* Especificações Técnicas dinâmicas */}
+            {/* Especificações fixas (sempre visíveis) */}
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="font-semibold text-sm">Especificações (gerais)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Voltagem</Label>
+                  <Select value={form.voltagem} onValueChange={(v) => setForm((f) => ({ ...f, voltagem: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="110V">110V</SelectItem>
+                      <SelectItem value="220V">220V</SelectItem>
+                      <SelectItem value="Bivolt">Bivolt</SelectItem>
+                      <SelectItem value="12V DC">12V DC</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Potência (W)</Label>
+                  <Input type="number" value={form.potencia_w} onChange={(e) => setForm((f) => ({ ...f, potencia_w: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Peso (kg)</Label>
+                  <Input type="number" step="0.01" value={form.peso_kg} onChange={(e) => setForm((f) => ({ ...f, peso_kg: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Dimensões (CxLxA cm)</Label>
+                  <Input value={form.dimensoes} onChange={(e) => setForm((f) => ({ ...f, dimensoes: e.target.value }))} placeholder="Ex: 50x30x20" />
+                </div>
+              </div>
+            </div>
+
+            {/* Especificações Técnicas dinâmicas por categoria */}
             {specFields.length > 0 && (
               <div className="space-y-3 border-t pt-4">
-                <h4 className="font-semibold text-sm">Especificações Técnicas</h4>
+                <h4 className="font-semibold text-sm">Especificações Técnicas (categoria)</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {specFields.map((field) => (
                     <div key={field.key} className="space-y-2">
@@ -488,6 +620,28 @@ export default function Equipamentos() {
                 </div>
               </div>
             )}
+
+            {/* Campos personalizados */}
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-sm">Campos personalizados</h4>
+                <Button type="button" variant="outline" size="sm" onClick={addCustomField}>
+                  <Plus className="w-3 h-3 mr-1" />Adicionar campo
+                </Button>
+              </div>
+              {form.custom_fields.length === 0 && (
+                <p className="text-xs text-muted-foreground">Adicione campos extras conforme sua necessidade (ex: cor, número da nota, lote).</p>
+              )}
+              {form.custom_fields.map((cf, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <Input placeholder="Nome do campo" value={cf.label} onChange={(e) => updateCustomField(idx, "label", e.target.value)} />
+                  <Input placeholder="Valor" value={cf.valor} onChange={(e) => updateCustomField(idx, "valor", e.target.value)} />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeCustomField(idx)}>
+                    <X className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
 
             {/* Conservação e Manutenção */}
             <div className="space-y-3 border-t pt-4">
@@ -518,15 +672,35 @@ export default function Equipamentos() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Observações</Label>
-              <Textarea value={form.observacoes} onChange={(e) => setForm((f) => ({ ...f, observacoes: e.target.value }))} rows={3} />
-            </div>
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
                 {createMut.isPending || updateMut.isPending ? "Salvando..." : "Salvar"}
               </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: criar novo setor */}
+      <Dialog open={novoSetorOpen} onOpenChange={(o) => { setNovoSetorOpen(o); if (!o) setNovoSetorNome(""); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Criar novo setor</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleCriarSetor(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do setor *</Label>
+              <Input
+                autoFocus
+                value={novoSetorNome}
+                onChange={(e) => setNovoSetorNome(e.target.value)}
+                placeholder="Ex: Tradução simultânea, Energia, Cenografia..."
+                required
+              />
+              <p className="text-xs text-muted-foreground">Ficará disponível para todos os usuários.</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setNovoSetorOpen(false)}>Cancelar</Button>
+              <Button type="submit">Criar setor</Button>
             </div>
           </form>
         </DialogContent>
