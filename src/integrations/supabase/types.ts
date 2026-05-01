@@ -24,6 +24,10 @@ export type Database = {
           id: string
           metodo_conferencia: string | null
           observacao: string | null
+          problema_resolvido: boolean
+          resolucao_observacao: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
         }
         Insert: {
           conferencia_id: string
@@ -34,6 +38,10 @@ export type Database = {
           id?: string
           metodo_conferencia?: string | null
           observacao?: string | null
+          problema_resolvido?: boolean
+          resolucao_observacao?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
         }
         Update: {
           conferencia_id?: string
@@ -44,6 +52,10 @@ export type Database = {
           id?: string
           metodo_conferencia?: string | null
           observacao?: string | null
+          problema_resolvido?: boolean
+          resolucao_observacao?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
         }
         Relationships: [
           {
