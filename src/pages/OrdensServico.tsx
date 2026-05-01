@@ -418,3 +418,67 @@ export default function OrdensServico() {
     </div>
   );
 }
+
+function ConferenciaPanel({ ordemId }: { ordemId: string }) {
+  const { data: conf } = useQuery({
+    queryKey: ["conferencia-ordem", ordemId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("conferencias_chegada")
+        .select("id, token, status, conferente_nome, finalizada_em")
+        .eq("ordem_id", ordemId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (!conf) {
+    return (
+      <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+        Nenhuma conferência associada a esta OS ainda.
+      </div>
+    );
+  }
+
+  const url = `${window.location.origin}/conferencia/${conf.token}`;
+  const statusLabel = conf.status === "concluida" ? "Concluída" : conf.status === "em_andamento" ? "Em andamento" : "Pendente";
+  const statusColor = conf.status === "concluida" ? "bg-green-100 text-green-800" : conf.status === "em_andamento" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800";
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+    catch { toast.error("Não foi possível copiar"); }
+  };
+
+  return (
+    <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Link2 className="w-4 h-4 text-primary" />
+          <span className="font-medium text-sm">Conferência de chegada</span>
+        </div>
+        <Badge variant="secondary" className={statusColor}>{statusLabel}</Badge>
+      </div>
+      {conf.conferente_nome && (
+        <p className="text-xs text-muted-foreground">Conferente: <strong>{conf.conferente_nome}</strong></p>
+      )}
+      <div className="flex flex-col sm:flex-row gap-3 items-start">
+        <div className="bg-white p-2 rounded border">
+          <QRCodeSVG value={url} size={96} />
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <p className="text-xs text-muted-foreground break-all">{url}</p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={copy}>
+              <Copy className="w-3 h-3 mr-1" />Copiar link
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => window.open(url, "_blank")}>
+              <QrCode className="w-3 h-3 mr-1" />Abrir
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Compartilhe este link com quem irá receber os equipamentos no local. Não precisa de login.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
