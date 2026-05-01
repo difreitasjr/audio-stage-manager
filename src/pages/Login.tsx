@@ -12,7 +12,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [adminExists, setAdminExists] = useState<boolean | null>(null);
   const { signIn, session } = useAuth();
   const navigate = useNavigate();
 
@@ -23,12 +22,6 @@ export default function Login() {
       navigate(seen ? "/dashboard" : "/bem-vindo", { replace: true });
     }
   }, [session, navigate]);
-
-  useEffect(() => {
-    supabase.rpc("admin_exists").then(({ data }) => {
-      setAdminExists(data === true);
-    });
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
