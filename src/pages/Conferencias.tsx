@@ -1,14 +1,22 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   ClipboardCheck, AlertTriangle, Clock, CheckCircle2, ExternalLink, Copy, Search,
+  Wrench, RotateCcw, Settings,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +47,10 @@ type ItemProblema = {
   metodo_conferencia: string | null;
   conferido_em: string | null;
   equipamento_id: string;
+  problema_resolvido: boolean;
+  resolucao_observacao: string | null;
+  resolvido_em: string | null;
+  resolvido_por: string | null;
   equipamentos?: { nome: string; numero_serie: string | null } | null;
   conferencias_chegada?: {
     id: string;
@@ -62,9 +74,17 @@ function isAtrasada(c: ConferenciaRow) {
 }
 
 export default function Conferencias() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("todas");
+  const [showResolved, setShowResolved] = useState(false);
+
+  // Dialogs state
+  const [resolverItem, setResolverItem] = useState<ItemProblema | null>(null);
+  const [resolucaoTexto, setResolucaoTexto] = useState("");
+  const [statusConf, setStatusConf] = useState<ConferenciaRow | null>(null);
+  const [novoStatus, setNovoStatus] = useState<string>("pendente");
 
   const { data: conferencias = [], isLoading } = useQuery({
     queryKey: ["conferencias-painel"],
@@ -85,12 +105,13 @@ export default function Conferencias() {
   });
 
   const { data: problemas = [] } = useQuery({
-    queryKey: ["conferencia-itens-problemas"],
+    queryKey: ["conferencia-itens-problemas", showResolved],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("conferencia_itens")
         .select(`
           id, observacao, metodo_conferencia, conferido_em, equipamento_id,
+          problema_resolvido, resolucao_observacao, resolvido_em, resolvido_por,
           equipamentos:equipamento_id ( nome, numero_serie ),
           conferencias_chegada:conferencia_id (
             id, token, conferente_nome,
@@ -99,10 +120,55 @@ export default function Conferencias() {
         `)
         .not("observacao", "is", null)
         .order("conferido_em", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(300);
+      if (!showResolved) query = query.eq("problema_resolvido", false);
+      const { data, error } = await query;
       if (error) throw error;
-      return (data || []).filter((i: any) => i.observacao && String(i.observacao).trim().length > 0) as unknown as ItemProblema[];
+      return (data || []).filter(
+        (i: any) => i.observacao && String(i.observacao).trim().length > 0
+      ) as unknown as ItemProblema[];
     },
+  });
+
+  const resolverMutation = useMutation({
+    mutationFn: async ({ id, resolvido, observacao }: { id: string; resolvido: boolean; observacao?: string }) => {
+      const { error } = await supabase
+        .from("conferencia_itens")
+        .update({
+          problema_resolvido: resolvido,
+          resolucao_observacao: resolvido ? (observacao || null) : null,
+          resolvido_em: resolvido ? new Date().toISOString() : null,
+          resolvido_por: resolvido ? profile?.user_id ?? null : null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conferencia-itens-problemas"] });
+      setResolverItem(null);
+      setResolucaoTexto("");
+      toast({ title: "Atualizado", description: "Status do problema atualizado." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const patch: any = { status };
+      if (status === "concluida") patch.finalizada_em = new Date().toISOString();
+      else patch.finalizada_em = null;
+      const { error } = await supabase
+        .from("conferencias_chegada")
+        .update(patch)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conferencias-painel"] });
+      setStatusConf(null);
+      toast({ title: "Status alterado", description: "Conferência atualizada." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
   const filtered = useMemo(() => {
@@ -124,7 +190,8 @@ export default function Conferencias() {
     const emAndamento = conferencias.filter((c) => c.status === "em_andamento").length;
     const concluidas = conferencias.filter((c) => c.status === "concluida").length;
     const atrasadas = conferencias.filter(isAtrasada).length;
-    return { pendentes, emAndamento, concluidas, atrasadas, problemas: problemas.length };
+    const problemasAbertos = problemas.filter((p) => !p.problema_resolvido).length;
+    return { pendentes, emAndamento, concluidas, atrasadas, problemas: problemasAbertos };
   }, [conferencias, problemas]);
 
   const byTab = useMemo(() => {
@@ -140,13 +207,18 @@ export default function Conferencias() {
     { label: "Em andamento", value: counts.emAndamento, icon: ClipboardCheck, color: "text-blue-600" },
     { label: "Concluídas", value: counts.concluidas, icon: CheckCircle2, color: "text-green-600" },
     { label: "Atrasadas", value: counts.atrasadas, icon: AlertTriangle, color: "text-red-600" },
-    { label: "Itens c/ problema", value: counts.problemas, icon: AlertTriangle, color: "text-orange-600" },
+    { label: "Problemas abertos", value: counts.problemas, icon: AlertTriangle, color: "text-orange-600" },
   ];
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/conferencia/${token}`;
     navigator.clipboard.writeText(url);
     toast({ title: "Link copiado", description: url });
+  };
+
+  const openStatusDialog = (c: ConferenciaRow) => {
+    setStatusConf(c);
+    setNovoStatus(c.status);
   };
 
   return (
@@ -241,6 +313,10 @@ export default function Conferencias() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center gap-1 justify-end">
+                                <Button size="sm" variant="outline" onClick={() => openStatusDialog(c)} title="Alterar status" className="gap-1">
+                                  <Settings className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Status</span>
+                                </Button>
                                 <Button size="icon" variant="ghost" onClick={() => copyLink(c.token)} title="Copiar link">
                                   <Copy className="w-4 h-4" />
                                 </Button>
@@ -267,15 +343,24 @@ export default function Conferencias() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-orange-600" />
             Itens marcados com problemas
           </CardTitle>
+          <Button
+            size="sm"
+            variant={showResolved ? "default" : "outline"}
+            onClick={() => setShowResolved((v) => !v)}
+          >
+            {showResolved ? "Ocultar resolvidos" : "Mostrar resolvidos"}
+          </Button>
         </CardHeader>
         <CardContent>
           {problemas.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum item com observação de problema.</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              {showResolved ? "Nenhum item com observação." : "Nenhum problema em aberto. 🎉"}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -286,11 +371,13 @@ export default function Conferencias() {
                     <TableHead>Observação</TableHead>
                     <TableHead>Conferente</TableHead>
                     <TableHead>Quando</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {problemas.map((p) => (
-                    <TableRow key={p.id}>
+                    <TableRow key={p.id} className={p.problema_resolvido ? "opacity-60" : ""}>
                       <TableCell className="font-medium">
                         #{p.conferencias_chegada?.ordens_servico?.numero}
                         <div className="text-xs text-muted-foreground">{p.conferencias_chegada?.ordens_servico?.cliente}</div>
@@ -303,10 +390,47 @@ export default function Conferencias() {
                       </TableCell>
                       <TableCell className="max-w-md">
                         <div className="text-sm whitespace-pre-wrap">{p.observacao}</div>
+                        {p.problema_resolvido && p.resolucao_observacao && (
+                          <div className="mt-2 p-2 rounded bg-green-50 border border-green-200 text-xs text-green-800 whitespace-pre-wrap">
+                            <strong>Correção:</strong> {p.resolucao_observacao}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">{p.conferencias_chegada?.conferente_nome || "—"}</TableCell>
                       <TableCell className="text-sm">
                         {p.conferido_em ? new Date(p.conferido_em).toLocaleString("pt-BR") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {p.problema_resolvido ? (
+                          <Badge className="bg-green-100 text-green-700">Resolvido</Badge>
+                        ) : (
+                          <Badge className="bg-orange-100 text-orange-700">Aberto</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {p.problema_resolvido ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => resolverMutation.mutate({ id: p.id, resolvido: false })}
+                            className="gap-1"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Reabrir
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setResolverItem(p);
+                              setResolucaoTexto("");
+                            }}
+                            className="gap-1"
+                          >
+                            <Wrench className="w-3.5 h-3.5" />
+                            Resolver
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -316,6 +440,82 @@ export default function Conferencias() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog: registrar correção */}
+      <Dialog open={!!resolverItem} onOpenChange={(o) => !o && setResolverItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar correção</DialogTitle>
+            <DialogDescription>
+              {resolverItem?.equipamentos?.nome} — OS #{resolverItem?.conferencias_chegada?.ordens_servico?.numero}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="p-3 rounded bg-muted text-sm">
+              <strong>Problema reportado:</strong>
+              <p className="mt-1 whitespace-pre-wrap">{resolverItem?.observacao}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Descrição da correção (opcional)</label>
+              <Textarea
+                value={resolucaoTexto}
+                onChange={(e) => setResolucaoTexto(e.target.value)}
+                placeholder="Ex: cabo substituído, equipamento enviado para manutenção, etc."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolverItem(null)}>Cancelar</Button>
+            <Button
+              onClick={() =>
+                resolverItem &&
+                resolverMutation.mutate({ id: resolverItem.id, resolvido: true, observacao: resolucaoTexto })
+              }
+              disabled={resolverMutation.isPending}
+            >
+              {resolverMutation.isPending ? "Salvando..." : "Confirmar correção"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: alterar status da conferência */}
+      <Dialog open={!!statusConf} onOpenChange={(o) => !o && setStatusConf(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar status da conferência</DialogTitle>
+            <DialogDescription>
+              OS #{statusConf?.ordens_servico?.numero} — {statusConf?.ordens_servico?.cliente}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Novo status</label>
+            <Select value={novoStatus} onValueChange={setNovoStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="em_andamento">Em andamento</SelectItem>
+                <SelectItem value="concluida">Concluída</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Marcar como "Concluída" registra a data/hora de finalização.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusConf(null)}>Cancelar</Button>
+            <Button
+              onClick={() => statusConf && statusMutation.mutate({ id: statusConf.id, status: novoStatus })}
+              disabled={statusMutation.isPending}
+            >
+              {statusMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
