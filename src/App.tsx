@@ -23,6 +23,7 @@ import Conferencias from "@/pages/Conferencias";
 import Retornos from "@/pages/Retornos";
 import RetornoDetalhe from "@/pages/RetornoDetalhe";
 import BemVindo from "@/pages/BemVindo";
+import Assinatura from "@/pages/Assinatura";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/manutencao" element={<ProtectedRoute><Manutencao /></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute adminOnly><Usuarios /></ProtectedRoute>} />
               <Route path="/relatorios" element={<ProtectedRoute adminOnly><Relatorios /></ProtectedRoute>} />
+              <Route path="/assinatura" element={<ProtectedRoute adminOnly><Assinatura /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

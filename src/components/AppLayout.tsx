@@ -3,11 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Package, ClipboardList, ArrowLeftRight,
-  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown, RefreshCw, ClipboardCheck, RotateCcw,
+  Wrench, Users, BarChart3, LogOut, Menu, X, ChevronDown, RefreshCw, ClipboardCheck, RotateCcw, CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { AssinaturaBanner } from "@/components/AssinaturaBanner";
 
 async function forceRefresh() {
   try {
@@ -38,6 +39,7 @@ const adminNav = [
   { to: "/manutencao", icon: Wrench, label: "Manutenção" },
   { to: "/usuarios", icon: Users, label: "Usuários" },
   { to: "/relatorios", icon: BarChart3, label: "Relatórios" },
+  { to: "/assinatura", icon: CreditCard, label: "Assinatura" },
 ];
 
 const staffNav = [
@@ -124,6 +126,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
+        <AssinaturaBanner />
         <header className="h-16 border-b flex items-center px-4 lg:px-6 bg-card">
           <button className="lg:hidden mr-3" onClick={() => setSidebarOpen(true)}>
             <Menu className="w-6 h-6 text-foreground" />

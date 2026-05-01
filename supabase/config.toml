@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.conferencia-remove-item]
 verify_jwt = false
+
+[functions.cakto-webhook]
+verify_jwt = false
