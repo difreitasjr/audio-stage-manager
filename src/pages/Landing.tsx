@@ -165,6 +165,7 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
             <a href="#features" className="hover:text-white transition">Recursos</a>
+            <a href="#precos" className="hover:text-white transition">Preços</a>
             <a href="#comparativo" className="hover:text-white transition">Comparativo</a>
             <a href="#depoimentos" className="hover:text-white transition">Depoimentos</a>
             <a href="#faq" className="hover:text-white transition">FAQ</a>
@@ -174,7 +175,7 @@ export default function Landing() {
               Entrar
             </Link>
             <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-500/30">
-              <Link to="/login">Começar agora</Link>
+              <Link to="/cadastro">Teste 7 dias grátis</Link>
             </Button>
           </div>
         </div>
@@ -212,15 +213,16 @@ export default function Landing() {
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base h-14 px-8 shadow-2xl shadow-blue-500/40">
-              <Link to="/login">
-                Começar agora
+              <Link to="/cadastro">
+                Começar 7 dias grátis
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white h-14 px-8 text-base">
-              <a href="#features">Ver recursos</a>
+              <a href="#precos">Ver planos</a>
             </Button>
           </div>
+          <p className="mt-4 text-sm text-white/50">Sem cartão de crédito • Cancele quando quiser</p>
 
           {/* setores chips */}
           <div className="mt-14 flex flex-wrap justify-center gap-3">
@@ -404,8 +406,88 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* PREÇOS */}
+      <section id="precos" className="py-24 md:py-32">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="text-blue-400 text-sm font-semibold uppercase tracking-wider mb-3">Planos</div>
+            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+              Um plano. Três formas de pagar.
+            </h2>
+            <p className="mt-6 text-lg text-white/60 max-w-2xl mx-auto">
+              Acesso completo a todos os recursos. Quanto maior o ciclo, maior a economia.
+              <br />Comece com <span className="text-blue-300 font-semibold">7 dias grátis</span>, sem cartão.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              { id: "mensal", nome: "Mensal", preco: 149, periodo: "/mês", eq: null, eco: null, destaque: false },
+              { id: "semestral", nome: "Semestral", preco: 759, periodo: "/6 meses", eq: "R$ 126,50/mês", eco: "Economize 15%", destaque: false },
+              { id: "anual", nome: "Anual", preco: 1199, periodo: "/ano", eq: "R$ 99,92/mês", eco: "Economize 33%", destaque: true },
+            ].map((p) => (
+              <div
+                key={p.id}
+                className={`relative p-8 rounded-2xl border transition-all ${
+                  p.destaque
+                    ? "bg-gradient-to-b from-blue-600/20 to-blue-900/5 border-blue-500/50 shadow-2xl shadow-blue-500/30 scale-[1.02]"
+                    : "bg-white/[0.03] border-white/10 hover:border-white/20"
+                }`}
+              >
+                {p.destaque && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-blue-500 text-white text-xs font-bold">
+                    MAIS ESCOLHIDO
+                  </div>
+                )}
+                <div className="text-lg font-semibold text-white/80">{p.nome}</div>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span className="text-5xl font-extrabold">R$ {p.preco}</span>
+                  <span className="text-white/50">{p.periodo}</span>
+                </div>
+                {p.eq && <div className="mt-1 text-sm text-white/50">{p.eq}</div>}
+                {p.eco && (
+                  <div className="mt-3 inline-block px-2.5 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-semibold">
+                    {p.eco}
+                  </div>
+                )}
+                <ul className="mt-6 space-y-3">
+                  {[
+                    "Equipamentos ilimitados",
+                    "Ordens de serviço ilimitadas",
+                    "Setores e usuários ilimitados",
+                    "Conferências por QR Code",
+                    "Relatórios completos",
+                    p.id === "mensal" ? "Suporte por e-mail" : "Suporte prioritário",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-white/80">
+                      <Check className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  asChild
+                  size="lg"
+                  className={`w-full mt-8 font-semibold ${
+                    p.destaque
+                      ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/40"
+                      : "bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                  }`}
+                >
+                  <Link to="/cadastro">Começar 7 dias grátis</Link>
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-sm text-white/50 mt-10">
+            Pagamento seguro via Cakto (Pix, cartão ou boleto). Cancele a qualquer momento.
+          </p>
+        </div>
+      </section>
+
       {/* FAQ */}
-      <section id="faq" className="py-24 md:py-32">
+      <section id="faq" className="py-24 md:py-32 bg-white/[0.02] border-y border-white/5">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-12">
             <div className="text-blue-400 text-sm font-semibold uppercase tracking-wider mb-3">FAQ</div>
@@ -450,15 +532,13 @@ export default function Landing() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base h-14 px-10 shadow-2xl shadow-blue-500/40">
-              <Link to="/login">
-                Começar agora
+              <Link to="/cadastro">
+                Começar 7 dias grátis
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white h-14 px-8 text-base">
-              <a href="mailto:contato@avcontrol.com.br?subject=Quero falar com vendas">
-                Falar com vendas
-              </a>
+              <a href="#precos">Ver planos</a>
             </Button>
           </div>
         </div>
