@@ -25,11 +25,12 @@ import BemVindo from "@/pages/BemVindo";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+function ProtectedRoute({ children, adminOnly = false, bare = false }: { children: React.ReactNode; adminOnly?: boolean; bare?: boolean }) {
   const { session, loading, isAdmin } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   if (!session) return <Navigate to="/login" replace />;
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
+  if (bare) return <>{children}</>;
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -66,7 +67,7 @@ const App = () => (
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/conferencia/:token" element={<ConferenciaPublica />} />
               <Route path="/" element={<HomeRoute />} />
-              <Route path="/bem-vindo" element={<ProtectedRoute><BemVindo /></ProtectedRoute>} />
+              <Route path="/bem-vindo" element={<ProtectedRoute bare><BemVindo /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
               <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
