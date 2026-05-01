@@ -1,73 +1,30 @@
-## Objetivo
+## Ajuste: autocomplete por nome no campo de conferência
 
-No campo de conferência pública (tela do conferente), além de código de barras / nº série / patrimônio, permitir:
+Adicionar um dropdown de sugestões abaixo do input enquanto o conferente digita, mostrando equipamentos da OS cujo nome contém o texto. Clicar em uma sugestão marca o item como conferido imediatamente.
 
-1. **Buscar item da OS pelo nome** (match parcial, case-insensitive). Se houver mais de um match, mostrar lista para escolher.
-2. **Adicionar item avulso** quando o equipamento não está cadastrado em lugar nenhum — só nome livre + observação opcional. Esses itens aparecem na conferência marcados como "avulsos" e são visíveis no painel `/conferencias` para o admin/staff.
+### Mudança única — `src/pages/ConferenciaPublica.tsx`
 
-## Mudanças no banco (1 migration)
+No bloco do input de busca (logo abaixo do header da OS), envolver o `<Input>` em um container `relative` e renderizar uma lista flutuante de sugestões.
 
-Adicionar colunas em `conferencia_itens` para suportar item avulso:
+Lógica de sugestões (computada em cada render, sem estado novo):
 
-- `nome_avulso text NULL` — nome livre digitado pelo conferente
-- `is_avulso boolean NOT NULL DEFAULT false`
-- Tornar `equipamento_id` **nullable** (hoje é NOT NULL) — itens avulsos não têm equipamento.
+- Filtra `itens` carregados (já vêm do backend) onde `is_avulso === false` e `equipamentos.nome` contém o texto digitado (case-insensitive).
+- Só mostra se houver ≥1 caractere digitado **e** o texto não parecer código (reusa `looksLikeCode` existente — assim, scanner / código de barras não dispara dropdown).
+- Limite de 8 sugestões.
 
-RLS atual já cobre os novos campos (políticas baseiam-se em `conferencia_id` → ordem → setor).
+Cada sugestão mostra: nome em destaque, marca/modelo + SN em sublinha, e um indicador "✓ ok" se já foi conferido.
 
-## Edge function: `conferencia-mark-item`
+Ao clicar:
+- Limpa o campo `busca`.
+- Chama `marcarPorId(equipamento_id, "nome")` (função já existente).
 
-Estender o body aceito:
+O dropdown não substitui o botão **OK** — Enter / OK continuam funcionando como hoje (envia código ou nome e abre dialog de múltiplos matches se necessário). O autocomplete é apenas um atalho visual para os casos comuns.
 
-- Se vier `equipamento_id` ou `codigo` → fluxo atual (inalterado).
-- **Novo:** se vier `nome` (string) e nenhum código:
-  - Buscar entre os itens da conferência (`conferencia_itens` JOIN `equipamentos`) onde `equipamentos.nome ILIKE %nome%`.
-  - 1 match → marca como conferido (`metodo = 'nome'`).
-  - >1 match → retorna `{ matches: [{id, nome, marca, modelo}] }` com status 300/200 para o front exibir lista de escolha.
-  - 0 match → retorna 404 com mensagem clara ("Nenhum equipamento da OS bate com esse nome").
-- **Novo:** se vier `avulso: true` + `nome` (+ `observacao` opcional):
-  - Cria nova linha em `conferencia_itens` com `is_avulso=true`, `nome_avulso=nome`, `equipamento_id=null`, `conferido=true`, `metodo_conferencia='avulso'`, `observacao`.
+Estilização: usa tokens semânticos do design system (`bg-popover`, `border`, `shadow-lg`, `hover:bg-muted`) — coerente com o resto da UI.
 
-Validação: `nome` mínimo 2, máximo 200 chars (zod).
+### O que NÃO muda
 
-## UI: `src/pages/ConferenciaPublica.tsx`
-
-No bloco do input de código:
-
-```text
-[ Digite código ou nome do equipamento ] [OK] [Scanner]
-[ + Adicionar item avulso (não cadastrado) ]
-```
-
-- Heurística do botão OK / Enter: se o texto bate com regex de código (alphanumeric sem espaços e ≥4 chars com dígito) → enviar como `codigo`. Caso contrário → enviar como `nome`. (Além disso adicionar dropdown "Procurar por: [Código ▾ / Nome]" para forçar o modo se quiser.)
-- Se a função retornar múltiplos matches por nome → abrir um pequeno `Dialog` listando os equipamentos para o conferente clicar e confirmar.
-- Botão **"+ Adicionar item avulso"** abre um Dialog:
-  - Campo "Nome do equipamento *"
-  - Campo "Observação" (opcional)
-  - Botão "Adicionar e marcar como conferido"
-- Renderização da lista de itens: itens avulsos exibem badge "Avulso" e mostram `nome_avulso` em vez de `equipamentos.nome`. Permitir remover item avulso (só itens avulsos, antes da finalização) via novo endpoint OU campo no `conferencia-mark-item` com `action: 'remove'`. Para escopo enxuto: incluir um endpoint mínimo `conferencia-remove-item` aceitando `{token, item_id}` que só apaga linhas com `is_avulso=true`.
-
-## UI: `src/pages/Conferencias.tsx` (painel interno)
-
-Pequenos ajustes para que itens avulsos apareçam corretamente:
-
-- Ao listar itens com problema/observação, exibir `nome_avulso` quando `is_avulso=true` (em vez de `equipamentos.nome`).
-- Adicionar badge "Avulso" para distinguir.
-
-## Edge function: `conferencia-get`
-
-Incluir os novos campos (`is_avulso`, `nome_avulso`) no SELECT de `conferencia_itens`.
-
-## Arquivos afetados
-
-- **migration nova** — colunas `nome_avulso`, `is_avulso` em `conferencia_itens`; tornar `equipamento_id` nullable.
-- `supabase/functions/conferencia-mark-item/index.ts` — busca por nome + criação de item avulso.
-- `supabase/functions/conferencia-get/index.ts` — incluir novos campos.
-- `supabase/functions/conferencia-remove-item/index.ts` — **novo** (remover item avulso).
-- `src/pages/ConferenciaPublica.tsx` — input multimodo, dialog de múltiplos matches, dialog de item avulso, badges.
-- `src/pages/Conferencias.tsx` — exibir avulsos corretamente.
-- `src/integrations/supabase/types.ts` — regenerado automaticamente.
-
-## Fora do escopo
-
-- Promover item avulso a equipamento permanente do estoque (pode ser um próximo passo: botão no painel "Cadastrar como equipamento").
+- Edge functions (a busca por nome do backend continua disponível para fallback / múltiplos matches).
+- Banco de dados.
+- Painel `/conferencias`.
+- Botão de item avulso continua igual.
