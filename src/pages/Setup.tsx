@@ -20,8 +20,14 @@ export default function Setup() {
 
   useEffect(() => {
     (async () => {
-      const { data: exists } = await supabase.rpc("admin_exists");
+      const { data: exists, error } = await supabase.rpc("admin_exists");
+      if (error) {
+        toast.error("Erro ao verificar configuração inicial");
+        setChecking(false);
+        return;
+      }
       if (exists === true) {
+        toast.info("Já existe um administrador cadastrado. Faça login.");
         navigate("/login", { replace: true });
         return;
       }
