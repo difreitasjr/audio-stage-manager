@@ -5,14 +5,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { ShieldCheck, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Setup() {
   const navigate = useNavigate();
   const { signUp, signIn } = useAuth();
   const [checking, setChecking] = useState(true);
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -26,14 +27,10 @@ export default function Setup() {
         setChecking(false);
         return;
       }
-      if (exists === true) {
-        toast.info("Já existe um administrador cadastrado. Faça login.");
-        navigate("/login", { replace: true });
-        return;
-      }
+      setAlreadyExists(exists === true);
       setChecking(false);
     })();
-  }, [navigate]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +65,29 @@ export default function Setup() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (alreadyExists) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+              <Info className="w-6 h-6 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Administrador já cadastrado</CardTitle>
+            <CardDescription>
+              Este sistema já possui um administrador. Use seu email e senha na tela de login.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button className="w-full" onClick={() => navigate("/login", { replace: true })}>
+              Voltar ao login
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
