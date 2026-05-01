@@ -41,7 +41,10 @@ function ProtectedRoute({ children, adminOnly = false, bare = false }: { childre
  */
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (session?.user) {
+    const seen = (() => { try { return localStorage.getItem(`welcome_seen_${session.user.id}`); } catch { return "1"; } })();
+    return <Navigate to={seen ? "/dashboard" : "/bem-vindo"} replace />;
+  }
   return <>{children}</>;
 }
 

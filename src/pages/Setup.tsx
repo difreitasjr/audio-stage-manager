@@ -52,7 +52,7 @@ export default function Setup() {
       try {
         await signIn(email, password);
         toast.success("Administrador criado! Bem-vindo.");
-        navigate("/dashboard", { replace: true });
+        navigate("/bem-vindo", { replace: true });
       } catch {
         toast.success("Administrador criado! Faça login.");
         navigate("/login", { replace: true });
