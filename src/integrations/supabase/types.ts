@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      conferencia_itens: {
+        Row: {
+          conferencia_id: string
+          conferido: boolean
+          conferido_em: string | null
+          created_at: string
+          equipamento_id: string
+          id: string
+          metodo_conferencia: string | null
+          observacao: string | null
+        }
+        Insert: {
+          conferencia_id: string
+          conferido?: boolean
+          conferido_em?: string | null
+          created_at?: string
+          equipamento_id: string
+          id?: string
+          metodo_conferencia?: string | null
+          observacao?: string | null
+        }
+        Update: {
+          conferencia_id?: string
+          conferido?: boolean
+          conferido_em?: string | null
+          created_at?: string
+          equipamento_id?: string
+          id?: string
+          metodo_conferencia?: string | null
+          observacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencia_itens_conferencia_id_fkey"
+            columns: ["conferencia_id"]
+            isOneToOne: false
+            referencedRelation: "conferencias_chegada"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conferencias_chegada: {
+        Row: {
+          conferente_nome: string | null
+          created_at: string
+          finalizada_em: string | null
+          id: string
+          observacoes_finais: string | null
+          ordem_id: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          conferente_nome?: string | null
+          created_at?: string
+          finalizada_em?: string | null
+          id?: string
+          observacoes_finais?: string | null
+          ordem_id: string
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          conferente_nome?: string | null
+          created_at?: string
+          finalizada_em?: string | null
+          id?: string
+          observacoes_finais?: string | null
+          ordem_id?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipamentos: {
         Row: {
           acessorios: string | null
@@ -403,6 +480,7 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      gen_conferencia_token: { Args: never; Returns: string }
       get_user_setor: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
