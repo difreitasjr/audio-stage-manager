@@ -20,9 +20,11 @@ export type Database = {
           conferido: boolean
           conferido_em: string | null
           created_at: string
-          equipamento_id: string
+          equipamento_id: string | null
           id: string
+          is_avulso: boolean
           metodo_conferencia: string | null
+          nome_avulso: string | null
           observacao: string | null
           problema_resolvido: boolean
           resolucao_observacao: string | null
@@ -34,9 +36,11 @@ export type Database = {
           conferido?: boolean
           conferido_em?: string | null
           created_at?: string
-          equipamento_id: string
+          equipamento_id?: string | null
           id?: string
+          is_avulso?: boolean
           metodo_conferencia?: string | null
+          nome_avulso?: string | null
           observacao?: string | null
           problema_resolvido?: boolean
           resolucao_observacao?: string | null
@@ -48,9 +52,11 @@ export type Database = {
           conferido?: boolean
           conferido_em?: string | null
           created_at?: string
-          equipamento_id?: string
+          equipamento_id?: string | null
           id?: string
+          is_avulso?: boolean
           metodo_conferencia?: string | null
+          nome_avulso?: string | null
           observacao?: string | null
           problema_resolvido?: boolean
           resolucao_observacao?: string | null
