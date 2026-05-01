@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { CheckCircle2, ScanLine, Loader2, Package, Plus, Trash2, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ScannerDialog } from "@/components/ScannerDialog";
 
@@ -308,15 +309,41 @@ export default function ConferenciaPublica() {
           );
         })()}
 
+        {itens.length === 0 && !concluida && (
+          <Card className="border-dashed">
+            <CardContent className="p-4 text-center text-sm text-muted-foreground">
+              Nenhum equipamento vinculado a esta OS. Use <strong>"Adicionar item avulso"</strong> acima para registrar o que chegou.
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-2">
           {itens.map((it) => {
             const displayNome = it.is_avulso ? it.nome_avulso : it.equipamentos?.nome;
             const sub = it.is_avulso
               ? (it.observacao ? `Obs: ${it.observacao}` : "Item avulso")
               : `${it.equipamentos?.marca || ""} ${it.equipamentos?.modelo || ""}${it.equipamentos?.numero_serie ? ` · SN ${it.equipamentos.numero_serie}` : ""}`;
+            const podeMarcar = !concluida && !it.is_avulso && !it.conferido;
+            const handleToggle = () => {
+              if (podeMarcar) marcarPorId(it.equipamento_id, "manual");
+            };
             return (
-              <Card key={it.id} className={it.conferido ? "border-green-500/40 bg-green-50/50" : ""}>
+              <Card
+                key={it.id}
+                onClick={handleToggle}
+                className={`${it.conferido ? "border-green-500/40 bg-green-50/50" : ""} ${podeMarcar ? "cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition" : ""}`}
+              >
                 <CardContent className="p-3 flex items-center gap-3">
+                  {!it.is_avulso && (
+                    <Checkbox
+                      checked={it.conferido}
+                      disabled={concluida || it.conferido}
+                      onCheckedChange={(v) => { if (v && podeMarcar) marcarPorId(it.equipamento_id, "manual"); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-6 w-6 shrink-0"
+                      aria-label={`Conferir ${displayNome}`}
+                    />
+                  )}
                   {!it.is_avulso && it.equipamentos?.foto_url ? (
                     <img src={it.equipamentos.foto_url} alt="" className="w-12 h-12 rounded object-cover bg-muted" />
                   ) : (
@@ -328,6 +355,9 @@ export default function ConferenciaPublica() {
                     <div className="flex items-center gap-2">
                       <div className="font-medium text-sm truncate">{displayNome}</div>
                       {it.is_avulso && <Badge variant="secondary" className="text-[10px]">Avulso</Badge>}
+                      {it.conferido && !it.is_avulso && (
+                        <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">{sub}</div>
                     {it.conferido && it.conferido_em && (
@@ -336,20 +366,15 @@ export default function ConferenciaPublica() {
                       </div>
                     )}
                   </div>
-                  {!concluida && (
-                    <div className="flex items-center gap-1">
-                      {it.is_avulso ? (
-                        <Button size="sm" variant="ghost" onClick={() => removerAvulso(it.id)} title="Remover avulso">
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      ) : it.conferido ? (
-                        <Button size="sm" variant="ghost" onClick={() => marcarPorId(it.equipamento_id, "manual")} title="Re-marcar">
-                          <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={() => marcarPorId(it.equipamento_id, "manual")}>Conferir</Button>
-                      )}
-                    </div>
+                  {!concluida && it.is_avulso && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); removerAvulso(it.id); }}
+                      title="Remover avulso"
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
                   )}
                 </CardContent>
               </Card>
