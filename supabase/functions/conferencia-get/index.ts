@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
     const { data: itens } = await supabase
       .from("conferencia_itens")
-      .select("id, equipamento_id, conferido, metodo_conferencia, observacao, conferido_em, equipamentos(nome, marca, modelo, numero_serie, codigo_barras, numero_patrimonio, foto_url)")
+      .select("id, equipamento_id, conferido, metodo_conferencia, observacao, conferido_em, is_avulso, nome_avulso, equipamentos(nome, marca, modelo, numero_serie, codigo_barras, numero_patrimonio, foto_url)")
       .eq("conferencia_id", conf.id)
       .order("created_at");
 

@@ -3,10 +3,14 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, ScanLine, Loader2, Package } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import { CheckCircle2, ScanLine, Loader2, Package, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { ScannerDialog } from "@/components/ScannerDialog";
 
@@ -28,6 +32,15 @@ async function callFn(path: string, init?: RequestInit) {
   return data;
 }
 
+// Heurística simples: parece código (sem espaços, contém dígito ou tem ≥6 chars alfanuméricos)
+function looksLikeCode(s: string) {
+  const v = s.trim();
+  if (!v || /\s/.test(v)) return false;
+  if (/\d/.test(v) && v.length >= 3) return true;
+  if (/^[A-Za-z0-9-_]{6,}$/.test(v)) return true;
+  return false;
+}
+
 export default function ConferenciaPublica() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
@@ -35,10 +48,19 @@ export default function ConferenciaPublica() {
   const [ordem, setOrdem] = useState<any>(null);
   const [itens, setItens] = useState<any[]>([]);
   const [nome, setNome] = useState("");
-  const [codigo, setCodigo] = useState("");
+  const [busca, setBusca] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalizando, setFinalizando] = useState(false);
+
+  // Múltiplos matches por nome
+  const [multiMatches, setMultiMatches] = useState<any[] | null>(null);
+
+  // Dialog de item avulso
+  const [avulsoOpen, setAvulsoOpen] = useState(false);
+  const [avulsoNome, setAvulsoNome] = useState("");
+  const [avulsoObs, setAvulsoObs] = useState("");
+  const [avulsoLoading, setAvulsoLoading] = useState(false);
 
   const load = async () => {
     if (!token) return;
@@ -66,14 +88,83 @@ export default function ConferenciaPublica() {
     } catch (e: any) { toast.error(e.message); }
   };
 
-  const marcar = async (equipamento_id: string | null, codigoVal?: string, metodo: string = "manual") => {
+  // Marca por equipamento_id direto (botão "Conferir" na lista, ou seleção do dialog de matches)
+  const marcarPorId = async (equipamento_id: string, metodo: string = "manual") => {
     try {
-      const body: any = { token, metodo };
-      if (equipamento_id) body.equipamento_id = equipamento_id;
-      if (codigoVal) body.codigo = codigoVal;
-      await callFn(`/conferencia-mark-item`, { method: "POST", body: JSON.stringify(body) });
+      await callFn(`/conferencia-mark-item`, {
+        method: "POST",
+        body: JSON.stringify({ token, equipamento_id, metodo }),
+      });
       toast.success("Item conferido!");
-      setCodigo("");
+      setMultiMatches(null);
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  // Submete o input principal (código OU nome)
+  const submeterBusca = async (override?: string) => {
+    const valor = (override ?? busca).trim();
+    if (!valor) return;
+    try {
+      const body: any = { token };
+      if (looksLikeCode(valor)) {
+        body.codigo = valor;
+        body.metodo = "codigo";
+      } else {
+        body.nome = valor;
+      }
+      const resp = await callFn(`/conferencia-mark-item`, { method: "POST", body: JSON.stringify(body) });
+      if (resp?.multiple && Array.isArray(resp.matches)) {
+        setMultiMatches(resp.matches);
+        return;
+      }
+      toast.success("Item conferido!");
+      setBusca("");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const onScan = async (codigoLido: string) => {
+    try {
+      await callFn(`/conferencia-mark-item`, {
+        method: "POST",
+        body: JSON.stringify({ token, codigo: codigoLido, metodo: "qrcode" }),
+      });
+      toast.success("Item conferido!");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const adicionarAvulso = async () => {
+    if (avulsoNome.trim().length < 2) return toast.error("Digite o nome do equipamento");
+    setAvulsoLoading(true);
+    try {
+      await callFn(`/conferencia-mark-item`, {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+          avulso: true,
+          nome: avulsoNome.trim(),
+          observacao: avulsoObs.trim() || undefined,
+        }),
+      });
+      toast.success("Item avulso adicionado");
+      setAvulsoOpen(false);
+      setAvulsoNome("");
+      setAvulsoObs("");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setAvulsoLoading(false); }
+  };
+
+  const removerAvulso = async (item_id: string) => {
+    if (!confirm("Remover este item avulso da conferência?")) return;
+    try {
+      await callFn(`/conferencia-remove-item`, {
+        method: "POST",
+        body: JSON.stringify({ token, item_id }),
+      });
+      toast.success("Item removido");
       load();
     } catch (e: any) { toast.error(e.message); }
   };
@@ -158,49 +249,74 @@ export default function ConferenciaPublica() {
             <CardContent className="p-4 space-y-3">
               <div className="flex gap-2">
                 <Input
-                  value={codigo}
-                  onChange={e => setCodigo(e.target.value)}
-                  placeholder="Digite código de barras / nº série / patrimônio"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (codigo.trim()) marcar(null, codigo.trim(), "codigo"); } }}
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Código de barras, nº série, patrimônio ou nome do equipamento"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submeterBusca(); } }}
                 />
-                <Button onClick={() => codigo.trim() && marcar(null, codigo.trim(), "codigo")}>OK</Button>
-                <Button variant="outline" onClick={() => setScannerOpen(true)}><ScanLine className="w-4 h-4" /></Button>
+                <Button onClick={() => submeterBusca()}>OK</Button>
+                <Button variant="outline" onClick={() => setScannerOpen(true)} title="Escanear">
+                  <ScanLine className="w-4 h-4" />
+                </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Digite código ou nome (ex.: "mesa", "cabo xlr"). Se não estiver na lista, use o botão abaixo.
+              </p>
+              <Button variant="secondary" className="w-full" onClick={() => setAvulsoOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar item avulso (não cadastrado)
+              </Button>
             </CardContent>
           </Card>
         )}
 
         <div className="space-y-2">
-          {itens.map((it) => (
-            <Card key={it.id} className={it.conferido ? "border-green-500/40 bg-green-50/50" : ""}>
-              <CardContent className="p-3 flex items-center gap-3">
-                {it.equipamentos?.foto_url ? (
-                  <img src={it.equipamentos.foto_url} alt="" className="w-12 h-12 rounded object-cover bg-muted" />
-                ) : (
-                  <div className="w-12 h-12 rounded bg-muted flex items-center justify-center"><Package className="w-5 h-5 text-muted-foreground" /></div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{it.equipamentos?.nome}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {it.equipamentos?.marca} {it.equipamentos?.modelo}
-                    {it.equipamentos?.numero_serie ? ` · SN ${it.equipamentos.numero_serie}` : ""}
-                  </div>
-                  {it.conferido && it.conferido_em && (
-                    <div className="text-xs text-green-700">✓ Conferido às {new Date(it.conferido_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} ({it.metodo_conferencia})</div>
-                  )}
-                </div>
-                {!concluida && (
-                  it.conferido ? (
-                    <Button size="sm" variant="ghost" onClick={() => marcar(it.equipamento_id, undefined, "manual")} title="Re-marcar">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    </Button>
+          {itens.map((it) => {
+            const displayNome = it.is_avulso ? it.nome_avulso : it.equipamentos?.nome;
+            const sub = it.is_avulso
+              ? (it.observacao ? `Obs: ${it.observacao}` : "Item avulso")
+              : `${it.equipamentos?.marca || ""} ${it.equipamentos?.modelo || ""}${it.equipamentos?.numero_serie ? ` · SN ${it.equipamentos.numero_serie}` : ""}`;
+            return (
+              <Card key={it.id} className={it.conferido ? "border-green-500/40 bg-green-50/50" : ""}>
+                <CardContent className="p-3 flex items-center gap-3">
+                  {!it.is_avulso && it.equipamentos?.foto_url ? (
+                    <img src={it.equipamentos.foto_url} alt="" className="w-12 h-12 rounded object-cover bg-muted" />
                   ) : (
-                    <Button size="sm" onClick={() => marcar(it.equipamento_id, undefined, "manual")}>Conferir</Button>
-                  )
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                    <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                      <Package className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-sm truncate">{displayNome}</div>
+                      {it.is_avulso && <Badge variant="secondary" className="text-[10px]">Avulso</Badge>}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{sub}</div>
+                    {it.conferido && it.conferido_em && (
+                      <div className="text-xs text-green-700">
+                        ✓ Conferido às {new Date(it.conferido_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} ({it.metodo_conferencia})
+                      </div>
+                    )}
+                  </div>
+                  {!concluida && (
+                    <div className="flex items-center gap-1">
+                      {it.is_avulso ? (
+                        <Button size="sm" variant="ghost" onClick={() => removerAvulso(it.id)} title="Remover avulso">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      ) : it.conferido ? (
+                        <Button size="sm" variant="ghost" onClick={() => marcarPorId(it.equipamento_id, "manual")} title="Re-marcar">
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        </Button>
+                      ) : (
+                        <Button size="sm" onClick={() => marcarPorId(it.equipamento_id, "manual")}>Conferir</Button>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {!concluida && (
@@ -213,9 +329,80 @@ export default function ConferenciaPublica() {
         <ScannerDialog
           open={scannerOpen}
           onOpenChange={setScannerOpen}
-          onScan={(c) => marcar(null, c, "qrcode")}
+          onScan={(c) => onScan(c)}
           title="Escanear equipamento"
         />
+
+        {/* Dialog: múltiplos matches por nome */}
+        <Dialog open={!!multiMatches} onOpenChange={(o) => !o && setMultiMatches(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Vários equipamentos encontrados</DialogTitle>
+              <DialogDescription>Toque no item correto para conferir.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {(multiMatches || []).map((m) => (
+                <button
+                  key={m.item_id}
+                  onClick={() => marcarPorId(m.equipamento_id, "nome")}
+                  className="w-full text-left p-3 rounded-md border hover:bg-muted transition"
+                >
+                  <div className="font-medium text-sm">{m.nome}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {m.marca} {m.modelo}{m.numero_serie ? ` · SN ${m.numero_serie}` : ""}
+                  </div>
+                  {m.conferido && <div className="text-xs text-green-700 mt-1">✓ Já conferido</div>}
+                </button>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMultiMatches(null)}>
+                <X className="w-4 h-4 mr-1" /> Cancelar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: adicionar item avulso */}
+        <Dialog open={avulsoOpen} onOpenChange={setAvulsoOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Adicionar item avulso</DialogTitle>
+              <DialogDescription>
+                Use para equipamentos que não estão cadastrados no sistema (sem QR code, série ou patrimônio).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Nome do equipamento *</Label>
+                <Input
+                  value={avulsoNome}
+                  onChange={(e) => setAvulsoNome(e.target.value)}
+                  placeholder='Ex.: "Cabo XLR 5m", "Tripé extra"'
+                  maxLength={200}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Observação (opcional)</Label>
+                <Textarea
+                  value={avulsoObs}
+                  onChange={(e) => setAvulsoObs(e.target.value)}
+                  placeholder="Detalhes, estado, etc."
+                  maxLength={500}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAvulsoOpen(false)} disabled={avulsoLoading}>
+                Cancelar
+              </Button>
+              <Button onClick={adicionarAvulso} disabled={avulsoLoading}>
+                {avulsoLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-1" />}
+                Adicionar e marcar como conferido
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -46,7 +46,9 @@ type ItemProblema = {
   observacao: string | null;
   metodo_conferencia: string | null;
   conferido_em: string | null;
-  equipamento_id: string;
+  equipamento_id: string | null;
+  is_avulso?: boolean;
+  nome_avulso?: string | null;
   problema_resolvido: boolean;
   resolucao_observacao: string | null;
   resolvido_em: string | null;
@@ -111,6 +113,7 @@ export default function Conferencias() {
         .from("conferencia_itens")
         .select(`
           id, observacao, metodo_conferencia, conferido_em, equipamento_id,
+          is_avulso, nome_avulso,
           problema_resolvido, resolucao_observacao, resolvido_em, resolvido_por,
           equipamentos:equipamento_id ( nome, numero_serie ),
           conferencias_chegada:conferencia_id (
@@ -383,8 +386,11 @@ export default function Conferencias() {
                         <div className="text-xs text-muted-foreground">{p.conferencias_chegada?.ordens_servico?.cliente}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{p.equipamentos?.nome || "—"}</div>
-                        {p.equipamentos?.numero_serie && (
+                        <div className="font-medium flex items-center gap-2">
+                          {p.is_avulso ? (p.nome_avulso || "—") : (p.equipamentos?.nome || "—")}
+                          {p.is_avulso && <Badge variant="secondary" className="text-[10px]">Avulso</Badge>}
+                        </div>
+                        {!p.is_avulso && p.equipamentos?.numero_serie && (
                           <div className="text-xs text-muted-foreground">SN: {p.equipamentos.numero_serie}</div>
                         )}
                       </TableCell>
