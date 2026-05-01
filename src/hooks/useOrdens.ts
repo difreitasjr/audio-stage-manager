@@ -38,6 +38,9 @@ export function useCreateOrdem() {
       };
       itens: { equipamento_id: string; quantidade: number }[];
     }) => {
+      if (!data.itens || data.itens.length === 0) {
+        throw new Error("Adicione ao menos um equipamento à ordem de serviço");
+      }
       const { data: ordem, error: ordemError } = await supabase
         .from("ordens_servico").insert(data.ordem as any).select().single();
       if (ordemError) throw ordemError;
@@ -74,6 +77,7 @@ export function useCreateOrdem() {
       qc.invalidateQueries({ queryKey: ["ordens"] });
       qc.invalidateQueries({ queryKey: ["equipamentos"] });
       qc.invalidateQueries({ queryKey: ["movimentacoes"] });
+      qc.invalidateQueries({ queryKey: ["conferencia-ordem"] });
       toast.success("Ordem de serviço criada!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -93,6 +97,9 @@ export function useUpdateOrdem() {
       }>;
       itens: { equipamento_id: string; quantidade: number }[];
     }) => {
+      if (!data.itens || data.itens.length === 0) {
+        throw new Error("Adicione ao menos um equipamento à ordem de serviço");
+      }
       const { error: upErr } = await supabase
         .from("ordens_servico").update(data.ordem as any).eq("id", data.id);
       if (upErr) throw upErr;
@@ -113,6 +120,7 @@ export function useUpdateOrdem() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ordens"] });
+      qc.invalidateQueries({ queryKey: ["conferencia-ordem"] });
       toast.success("Ordem atualizada!");
     },
     onError: (e: any) => toast.error(e.message),
