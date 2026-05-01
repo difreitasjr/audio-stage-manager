@@ -1,4 +1,5 @@
 // Public endpoint: finalize the conferencia.
+// Só permite finalizar se TODOS os itens estiverem conferidos.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -25,6 +26,27 @@ Deno.serve(async (req) => {
       .eq("token", token)
       .maybeSingle();
     if (!conf) return json({ error: "Conferência não encontrada" }, 404);
+
+    // Verifica itens pendentes
+    const { data: itens, error: itensErr } = await supabase
+      .from("conferencia_itens")
+      .select("id, conferido")
+      .eq("conferencia_id", conf.id);
+    if (itensErr) return json({ error: itensErr.message }, 500);
+
+    const total = itens?.length || 0;
+    const pendentes = (itens || []).filter((i: any) => !i.conferido).length;
+
+    if (total === 0) {
+      return json({ error: "Não há itens para conferir nesta ordem." }, 400);
+    }
+    if (pendentes > 0) {
+      return json({
+        error: `Não é possível finalizar: faltam ${pendentes} ${pendentes === 1 ? "item" : "itens"} para conferir.`,
+        pendentes,
+        total,
+      }, 400);
+    }
 
     const { error } = await supabase
       .from("conferencias_chegada")

@@ -1,40 +1,27 @@
-Identifiquei que a OS #4 já tem 4 equipamentos vinculados e a tabela de itens da conferência também tem 4 registros, mas o endpoint público `conferencia-get` ainda devolve `itens: []`. O motivo mais provável é que o select aninhado `equipamentos(...)` não está retornando corretamente porque falta uma chave estrangeira explícita de `conferencia_itens.equipamento_id` para `equipamentos.id` no banco/tipos. Sem isso, a tela recebe lista vazia e mostra 0/0.
+Vou corrigir a regra de finalização da Conferência de Chegada para que ela só fique como **Concluída** quando todos os itens estiverem conferidos.
 
-Plano de correção:
+Plano:
 
-1. Corrigir o relacionamento no banco
-   - Criar uma migração adicionando a foreign key faltante:
-     - `conferencia_itens.equipamento_id -> equipamentos.id`
-   - Manter compatível com item avulso, pois `equipamento_id` pode ser nulo quando `is_avulso = true`.
-   - Preservar os índices/constraints únicos já existentes, sem apagar dados.
+1. **Bloquear no botão público de finalização**
+   - Em `ConferenciaPublica.tsx`, antes de chamar `conferencia-finalizar`, verificar se `conferidos < total`.
+   - Se houver item faltando, mostrar aviso em PT-BR dizendo quantos itens faltam e não enviar a finalização.
+   - O botão também passará a indicar melhor o estado quando faltarem itens.
 
-2. Ajustar o endpoint `conferencia-get` para não depender do join automático
-   - Trocar o select aninhado por uma busca em duas etapas:
-     - buscar todos os `conferencia_itens` da conferência;
-     - buscar os equipamentos correspondentes em `equipamentos` por `.in('id', ids)`;
-     - montar manualmente cada item com a propriedade `equipamentos` que a tela já usa.
-   - Isso elimina a chance de a lista sumir por causa de cache de schema/relacionamento.
-   - Também vou manter a reconciliação automática já criada: se a OS tiver equipamento em `ordem_equipamentos`, o endpoint garante o registro em `conferencia_itens` antes de responder.
+2. **Garantir a regra no backend**
+   - Em `supabase/functions/conferencia-finalizar/index.ts`, buscar os itens da conferência antes de atualizar o status.
+   - Se existir qualquer item `conferido = false`, retornar erro e manter a conferência em aberto.
+   - Só atualizar para `status = 'concluida'` e preencher `finalizada_em` quando `conferidos === total` e `total > 0`.
 
-3. Aplicar o mesmo padrão no `conferencia-mark-item`
-   - A busca por nome hoje também usa `equipamentos:equipamento_id(...)`.
-   - Vou ajustar para buscar itens + equipamentos separadamente e montar os matches manualmente.
-   - Assim, pesquisar por nome e selecionar sugestão continua funcionando mesmo sem depender de relacionamento implícito.
+3. **Corrigir alteração manual de status no painel**
+   - Em `src/pages/Conferencias.tsx`, ajustar a ação “Status” para não permitir selecionar/salvar **Concluída** se existirem itens sem conferir.
+   - Para isso, antes de salvar como concluída, consultar os itens daquela conferência e validar o progresso.
+   - Se houver pendência, mostrar mensagem tipo: “Não é possível concluir: falta conferir 1 item.”
 
-4. Melhorar a tela para diagnosticar caso volte a acontecer
-   - Se o endpoint retornar algum erro real, a tela vai mostrar a mensagem de erro em vez de apenas parecer “sem equipamentos”.
-   - A mensagem vazia será ajustada para indicar que a OS não tem itens sincronizados apenas quando a API realmente retornar lista vazia.
-
-5. Validar com a OS #4
-   - Após implementar, testar o endpoint do token `svksea77rd92` e confirmar que volta com 4 itens.
-   - Conferir que a tela deve sair de `0/0` e passar para `0/4`, exibindo:
-     - Monitor de Palco 12"
-     - Microfone Sem Fio de Mão
-     - Caixa Acústica Ativa 15"
-     - Subwoofer Ativo 18"
+4. **Melhorar exibição do status parcial/em aberto**
+   - Quando a conferência estiver finalizada incorretamente ou com progresso incompleto, a interface deve tratar como em aberto/andamento visualmente, não como concluída.
+   - Ajustar badges/mensagens para deixar claro que ainda há itens pendentes.
 
 Resultado esperado:
-- Ao clicar em “Abrir” na Conferência de chegada, a lista aparece com todos os equipamentos vinculados à OS.
-- A conferência não fica mais em `0/0` quando a OS possui equipamentos.
-- Equipamentos avulsos continuam funcionando.
-- O vínculo entre OS, conferência e equipamentos fica corrigido no banco e também protegido no endpoint.
+- No exemplo do print, com **3/4**, ao clicar em finalizar, a conferência não muda para **Concluída**.
+- Ela continua em aberto/em andamento, mostrando o item que falta conferir.
+- Só fica **Concluída** quando chegar em **4/4**.

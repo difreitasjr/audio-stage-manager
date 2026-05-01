@@ -157,6 +157,23 @@ export default function Conferencias() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      if (status === "concluida") {
+        const { data: itens, error: itErr } = await supabase
+          .from("conferencia_itens")
+          .select("id, conferido")
+          .eq("conferencia_id", id);
+        if (itErr) throw itErr;
+        const total = itens?.length || 0;
+        const pendentes = (itens || []).filter((i: any) => !i.conferido).length;
+        if (total === 0) {
+          throw new Error("Não há itens para conferir nesta ordem.");
+        }
+        if (pendentes > 0) {
+          throw new Error(
+            `Não é possível concluir: faltam ${pendentes} ${pendentes === 1 ? "item" : "itens"} para conferir.`
+          );
+        }
+      }
       const patch: any = { status };
       if (status === "concluida") patch.finalizada_em = new Date().toISOString();
       else patch.finalizada_em = null;

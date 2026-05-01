@@ -172,6 +172,17 @@ export default function ConferenciaPublica() {
   };
 
   const finalizar = async () => {
+    const pendentes = itens.filter((i) => !i.conferido).length;
+    if (itens.length === 0) {
+      toast.error("Não há itens para conferir nesta ordem.");
+      return;
+    }
+    if (pendentes > 0) {
+      toast.error(
+        `Faltam ${pendentes} ${pendentes === 1 ? "item" : "itens"} para conferir. A conferência continuará em aberto.`
+      );
+      return;
+    }
     setFinalizando(true);
     try {
       await callFn(`/conferencia-finalizar`, { method: "POST", body: JSON.stringify({ token }) });
@@ -382,12 +393,31 @@ export default function ConferenciaPublica() {
           })}
         </div>
 
-        {!concluida && (
-          <Button className="w-full" size="lg" onClick={finalizar} disabled={finalizando}>
-            {finalizando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Finalizar conferência ({conferidos}/{total})
-          </Button>
-        )}
+        {!concluida && (() => {
+          const faltam = total - conferidos;
+          const completo = total > 0 && faltam === 0;
+          return (
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={finalizar}
+                disabled={finalizando || !completo}
+                title={!completo ? `Faltam ${faltam} item(ns) para conferir` : ""}
+              >
+                {finalizando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {completo
+                  ? `Finalizar conferência (${conferidos}/${total})`
+                  : `Faltam ${faltam} ${faltam === 1 ? "item" : "itens"} para finalizar (${conferidos}/${total})`}
+              </Button>
+              {!completo && total > 0 && (
+                <p className="text-xs text-center text-muted-foreground">
+                  A conferência só pode ser concluída quando todos os itens forem conferidos.
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         <ScannerDialog
           open={scannerOpen}
