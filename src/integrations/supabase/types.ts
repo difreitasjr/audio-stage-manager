@@ -255,24 +255,51 @@ export type Database = {
       }
       empresas: {
         Row: {
+          assinatura_inicio: string | null
+          assinatura_proxima_cobranca: string | null
           ativo: boolean
+          cakto_customer_id: string | null
+          cakto_last_event: Json | null
+          cakto_subscription_id: string | null
           created_at: string
           id: string
           nome: string
+          plano: string
+          status_assinatura: string
+          trial_fim: string | null
+          trial_inicio: string | null
           updated_at: string
         }
         Insert: {
+          assinatura_inicio?: string | null
+          assinatura_proxima_cobranca?: string | null
           ativo?: boolean
+          cakto_customer_id?: string | null
+          cakto_last_event?: Json | null
+          cakto_subscription_id?: string | null
           created_at?: string
           id?: string
           nome: string
+          plano?: string
+          status_assinatura?: string
+          trial_fim?: string | null
+          trial_inicio?: string | null
           updated_at?: string
         }
         Update: {
+          assinatura_inicio?: string | null
+          assinatura_proxima_cobranca?: string | null
           ativo?: boolean
+          cakto_customer_id?: string | null
+          cakto_last_event?: Json | null
+          cakto_subscription_id?: string | null
           created_at?: string
           id?: string
           nome?: string
+          plano?: string
+          status_assinatura?: string
+          trial_fim?: string | null
+          trial_inicio?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -633,6 +660,51 @@ export type Database = {
           },
         ]
       }
+      pagamentos: {
+        Row: {
+          cakto_event_id: string | null
+          cakto_subscription_id: string | null
+          cakto_transaction_id: string | null
+          criado_em: string
+          empresa_id: string
+          id: string
+          metodo: string | null
+          plano: string | null
+          raw_payload: Json | null
+          status: string
+          tipo_evento: string
+          valor: number | null
+        }
+        Insert: {
+          cakto_event_id?: string | null
+          cakto_subscription_id?: string | null
+          cakto_transaction_id?: string | null
+          criado_em?: string
+          empresa_id: string
+          id?: string
+          metodo?: string | null
+          plano?: string | null
+          raw_payload?: Json | null
+          status: string
+          tipo_evento: string
+          valor?: number | null
+        }
+        Update: {
+          cakto_event_id?: string | null
+          cakto_subscription_id?: string | null
+          cakto_transaction_id?: string | null
+          criado_em?: string
+          empresa_id?: string
+          id?: string
+          metodo?: string | null
+          plano?: string | null
+          raw_payload?: Json | null
+          status?: string
+          tipo_evento?: string
+          valor?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ativo: boolean
@@ -748,6 +820,8 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      dias_restantes_trial: { Args: { _empresa_id: string }; Returns: number }
+      empresa_tem_acesso: { Args: { _empresa_id: string }; Returns: boolean }
       finalizar_conferencia_retorno: {
         Args: { _conf_id: string; _observacoes?: string }
         Returns: undefined
