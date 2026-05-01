@@ -190,7 +190,7 @@ export default function Equipamentos() {
 
   const handleCriarSetor = async () => {
     if (!novoSetorNome.trim()) return;
-    const { data, error } = await supabase.from("setores").insert({ nome: novoSetorNome.trim() }).select().single();
+    const { data, error } = await supabase.from("setores").insert({ nome: novoSetorNome.trim() } as any).select().single();
     if (error) {
       toast.error(error.message || "Erro ao criar setor");
       return;

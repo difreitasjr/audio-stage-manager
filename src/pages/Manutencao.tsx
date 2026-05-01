@@ -42,7 +42,7 @@ export default function Manutencao() {
         equipamento_id: form.equipamento_id, tipo_reparo: form.tipo_reparo,
         descricao: form.descricao || undefined, responsavel_id: profile?.id,
         data_inicio: form.data_inicio,
-      });
+      } as any);
       if (error) throw error;
       await supabase.from("equipamentos").update({ status: "manutencao" }).eq("id", form.equipamento_id);
     },

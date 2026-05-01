@@ -48,7 +48,7 @@ export function useCreateOrdem() {
           equipamento_id: it.equipamento_id,
           quantidade: it.quantidade,
         }));
-        const { error: itemError } = await supabase.from("ordem_equipamentos").insert(items);
+        const { error: itemError } = await supabase.from("ordem_equipamentos").insert(items as any);
         if (itemError) throw itemError;
 
         await supabase.from("equipamentos")
@@ -65,7 +65,7 @@ export function useCreateOrdem() {
             ordem_id: ordem.id,
             motivo: `Saída - OS #${ordem.numero} - ${data.ordem.cliente}`,
           }));
-          await supabase.from("movimentacao_estoque").insert(movs);
+          await supabase.from("movimentacao_estoque").insert(movs as any);
         }
       }
       return ordem;
@@ -107,7 +107,7 @@ export function useUpdateOrdem() {
           equipamento_id: it.equipamento_id,
           quantidade: it.quantidade,
         }));
-        const { error: insErr } = await supabase.from("ordem_equipamentos").insert(items);
+        const { error: insErr } = await supabase.from("ordem_equipamentos").insert(items as any);
         if (insErr) throw insErr;
       }
     },
@@ -147,7 +147,7 @@ export function useRetornarOrdem() {
               ? `Retorno - OS #${ordemInfo.numero} - ${ordemInfo.cliente}`
               : "Retorno de OS",
           }));
-          await supabase.from("movimentacao_estoque").insert(movs);
+          await supabase.from("movimentacao_estoque").insert(movs as any);
         }
       }
     },
