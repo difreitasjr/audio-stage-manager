@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download } from "lucide-react";
+import { RelatorioRetornos } from "@/components/RelatorioRetornos";
 
 const statusLabels: Record<string, string> = {
   disponivel: "Disponível", em_uso: "Em Uso", danificado: "Danificado", manutencao: "Manutenção",
@@ -56,6 +58,18 @@ export default function Relatorios() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Relatórios</h2>
+
+      <Tabs defaultValue="geral">
+        <TabsList>
+          <TabsTrigger value="geral">Geral</TabsTrigger>
+          <TabsTrigger value="retornos">Retornos ao Estoque</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="retornos" className="mt-6">
+          <RelatorioRetornos />
+        </TabsContent>
+
+        <TabsContent value="geral" className="mt-6 space-y-6">
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -140,6 +154,8 @@ export default function Relatorios() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
