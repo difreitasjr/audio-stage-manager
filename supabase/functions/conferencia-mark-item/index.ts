@@ -64,12 +64,27 @@ Deno.serve(async (req) => {
 
       const { data: rows } = await supabase
         .from("conferencia_itens")
-        .select("id, equipamento_id, conferido, equipamentos:equipamento_id(id, nome, marca, modelo, numero_serie)")
+        .select("id, equipamento_id, conferido")
         .eq("conferencia_id", conf.id)
         .eq("is_avulso", false)
         .not("equipamento_id", "is", null);
 
-      const matches = (rows || []).filter((r: any) =>
+      const equipIds = Array.from(new Set((rows || []).map((r: any) => r.equipamento_id).filter(Boolean)));
+      let equipMap: Record<string, any> = {};
+      if (equipIds.length > 0) {
+        const { data: equips } = await supabase
+          .from("equipamentos")
+          .select("id, nome, marca, modelo, numero_serie")
+          .in("id", equipIds);
+        for (const e of equips || []) equipMap[(e as any).id] = e;
+      }
+
+      const enriched = (rows || []).map((r: any) => ({
+        ...r,
+        equipamentos: r.equipamento_id ? equipMap[r.equipamento_id] || null : null,
+      }));
+
+      const matches = enriched.filter((r: any) =>
         r.equipamentos?.nome && String(r.equipamentos.nome).toLowerCase().includes(nm.toLowerCase())
       );
 
