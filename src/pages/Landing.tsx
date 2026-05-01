@@ -165,6 +165,7 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
             <a href="#features" className="hover:text-white transition">Recursos</a>
+            <a href="#precos" className="hover:text-white transition">Preços</a>
             <a href="#comparativo" className="hover:text-white transition">Comparativo</a>
             <a href="#depoimentos" className="hover:text-white transition">Depoimentos</a>
             <a href="#faq" className="hover:text-white transition">FAQ</a>
@@ -174,7 +175,7 @@ export default function Landing() {
               Entrar
             </Link>
             <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-500/30">
-              <Link to="/login">Começar agora</Link>
+              <Link to="/cadastro">Teste 7 dias grátis</Link>
             </Button>
           </div>
         </div>
@@ -212,15 +213,16 @@ export default function Landing() {
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base h-14 px-8 shadow-2xl shadow-blue-500/40">
-              <Link to="/login">
-                Começar agora
+              <Link to="/cadastro">
+                Começar 7 dias grátis
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white h-14 px-8 text-base">
-              <a href="#features">Ver recursos</a>
+              <a href="#precos">Ver planos</a>
             </Button>
           </div>
+          <p className="mt-4 text-sm text-white/50">Sem cartão de crédito • Cancele quando quiser</p>
 
           {/* setores chips */}
           <div className="mt-14 flex flex-wrap justify-center gap-3">
