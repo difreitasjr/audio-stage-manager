@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { CheckCircle2, ScanLine, Loader2, Package, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, ScanLine, Loader2, Package, Plus, Trash2, X, Undo2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ScannerDialog } from "@/components/ScannerDialog";

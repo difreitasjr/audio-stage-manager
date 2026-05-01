@@ -1,27 +1,23 @@
-Vou corrigir a regra de finalização da Conferência de Chegada para que ela só fique como **Concluída** quando todos os itens estiverem conferidos.
+## Permitir desconferir item na Conferência de Chegada
 
-Plano:
+Hoje, ao tique-mark um equipamento, não há como desfazer caso tenha sido marcado por engano (o checkbox e o card ficam disabled após `conferido = true`). Vou habilitar o "desconferir" no fluxo público.
 
-1. **Bloquear no botão público de finalização**
-   - Em `ConferenciaPublica.tsx`, antes de chamar `conferencia-finalizar`, verificar se `conferidos < total`.
-   - Se houver item faltando, mostrar aviso em PT-BR dizendo quantos itens faltam e não enviar a finalização.
-   - O botão também passará a indicar melhor o estado quando faltarem itens.
+### Mudanças
 
-2. **Garantir a regra no backend**
-   - Em `supabase/functions/conferencia-finalizar/index.ts`, buscar os itens da conferência antes de atualizar o status.
-   - Se existir qualquer item `conferido = false`, retornar erro e manter a conferência em aberto.
-   - Só atualizar para `status = 'concluida'` e preencher `finalizada_em` quando `conferidos === total` e `total > 0`.
+**1. `src/pages/ConferenciaPublica.tsx`**
+- Criar nova função `desmarcarPorId(equipamento_id)` que chama `conferencia-mark-item` com `{ token, equipamento_id, conferido: false }`. Mostra toast "Item desmarcado".
+- Ajustar a lógica do card de item (não-avulso, não-concluída):
+  - Permitir clique tanto para marcar quanto para desmarcar (toggle).
+  - Remover o `disabled={it.conferido}` do `Checkbox` e tratar `onCheckedChange` para chamar `marcar` ou `desmarcar` conforme o novo valor.
+  - Quando `it.conferido`, exibir um botão pequeno secundário "Desfazer" (ícone `Undo2` + texto), à direita do card, que dispara `desmarcarPorId`. Mantém o card visualmente em verde, mas com a ação clara para corrigir engano.
+- Para itens **avulsos** já marcados, manter o botão Trash (remover) como hoje — desconferir não se aplica porque eles só existem se foram conferidos.
+- Após desmarcar, recarregar via `load()` para atualizar progresso.
 
-3. **Corrigir alteração manual de status no painel**
-   - Em `src/pages/Conferencias.tsx`, ajustar a ação “Status” para não permitir selecionar/salvar **Concluída** se existirem itens sem conferir.
-   - Para isso, antes de salvar como concluída, consultar os itens daquela conferência e validar o progresso.
-   - Se houver pendência, mostrar mensagem tipo: “Não é possível concluir: falta conferir 1 item.”
+**2. Backend — sem alterações**
+- `supabase/functions/conferencia-mark-item/index.ts` já trata `conferido: false` no fluxo `equipamento_id`, limpando `conferido_em`. Bloqueia corretamente quando a conferência está `concluida`.
 
-4. **Melhorar exibição do status parcial/em aberto**
-   - Quando a conferência estiver finalizada incorretamente ou com progresso incompleto, a interface deve tratar como em aberto/andamento visualmente, não como concluída.
-   - Ajustar badges/mensagens para deixar claro que ainda há itens pendentes.
+**3. Validação de finalização — sem alterações**
+- A regra continua valendo: só finaliza com 100% conferidos. Desmarcar reduz o progresso e desabilita o botão "Finalizar" automaticamente.
 
-Resultado esperado:
-- No exemplo do print, com **3/4**, ao clicar em finalizar, a conferência não muda para **Concluída**.
-- Ela continua em aberto/em andamento, mostrando o item que falta conferir.
-- Só fica **Concluída** quando chegar em **4/4**.
+### Resultado
+- Usuário marca item errado → clica em "Desfazer" no card (ou desmarca o checkbox) → item volta para pendente, progresso recalcula, botão de finalizar fica bloqueado até reconferir corretamente.
