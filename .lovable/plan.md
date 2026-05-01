@@ -1,37 +1,34 @@
-## Problema
+# Corrigir card "Conferência de chegada" sumido (OS #4)
 
-A tela de conferência mostra `0/0` em algumas OS porque, embora as funções de banco `create_conferencia_for_ordem` e `sync_conferencia_itens` existam, **elas não estão ligadas como triggers** (não há nenhum trigger no schema `public`). Resultado:
+## Diagnóstico
 
-- Nem toda OS criada gera automaticamente sua `conferencias_chegada`.
-- Os `conferencia_itens` não são populados a partir de `ordem_equipamentos`.
-- A regra "toda OS precisa ter equipamento" só é validada no front (pode ser burlada).
+Consulta no banco mostrou que a OS #4 tem **2 conferências de chegada** (duplicadas) e **8 itens de conferência** (4 equipamentos × 2). Isso ocorreu porque, na migração anterior, o trigger `AFTER INSERT` foi anexado **e** um backfill foi executado em sequência, criando registros duplicados para a mesma OS.
 
-## Correção
+O componente `ConferenciaPanel` usa `.maybeSingle()` ao buscar a conferência. Quando há mais de uma linha, o Supabase retorna erro e o componente cai no estado "Nenhuma conferência associada a esta OS ainda" — exatamente o print 2.
 
-### 1. Backend (migração SQL)
+OSs #1, #2 e #3 funcionam (1 conferência cada). Apenas a #4 tem duplicata.
 
-- **Anexar os triggers que faltam**:
-  - `AFTER INSERT ON ordens_servico` → `create_conferencia_for_ordem()` (cria a conferência + token automaticamente para toda OS nova).
-  - `AFTER INSERT OR DELETE ON ordem_equipamentos` → `sync_conferencia_itens()` (insere/remove o item correspondente em `conferencia_itens`).
-- **Backfill** das OS existentes:
-  - Criar `conferencias_chegada` para qualquer OS sem uma.
-  - Inserir em `conferencia_itens` qualquer `ordem_equipamentos` ainda não refletido (com `ON CONFLICT DO NOTHING`).
-- **Constraint de integridade**: garantir que toda OS tenha pelo menos 1 equipamento via função + trigger `AFTER INSERT` em `ordens_servico` que valida (deferred via verificação no fluxo) — alternativa mais segura: manter validação no app + adicionar índice único `(ordem_id, equipamento_id)` em `ordem_equipamentos` para evitar duplicados.
+## Plano de correção
 
-### 2. Frontend
+### 1. Migração SQL — limpar duplicatas e blindar contra novas
 
-- **`src/hooks/useOrdens.ts`** (`useCreateOrdem`):
-  - Lançar erro antes do insert se `itens.length === 0` (hoje só tem `toast` no componente, mas a mutation aceita lista vazia).
-  - Após inserir `ordem_equipamentos`, fazer um `select` de verificação dos `conferencia_itens` e, se vier vazio, tentar reconciliar manualmente (rede de segurança caso o trigger falhe).
-- **`src/pages/OrdensServico.tsx`** (`handleSubmit`): manter validação atual de "ao menos 1 equipamento", reforçar mensagem.
-- **`ConferenciaPanel`**: invalidar a query `["conferencia-ordem", ordemId]` ao abrir o modal de visualização (caso a conferência tenha sido criada agora pelo trigger).
+- **Deduplicar `conferencias_chegada`**: para cada `ordem_id` com mais de uma linha, manter a mais antiga (a que já tem itens vinculados) e remover as demais. Antes de deletar a duplicata, mover quaisquer `conferencia_itens` órfãos para a conferência mantida (deduplicando por `equipamento_id`).
+- **Deduplicar `conferencia_itens`**: dentro de cada conferência, manter apenas uma linha por `equipamento_id` (preservando a que já estiver `conferido = true`, se houver).
+- **Criar índice único `uniq_conferencia_ordem`** em `conferencias_chegada(ordem_id)` para garantir 1 conferência por OS.
+- **Criar índice único `uniq_conferencia_item_equip`** em `conferencia_itens(conferencia_id, equipamento_id)` (apenas onde `is_avulso = false`) para impedir itens duplicados.
+- **Tornar a função `create_conferencia_for_ordem` idempotente**: usar `INSERT ... ON CONFLICT (ordem_id) DO NOTHING` para que execuções concorrentes ou backfills futuros nunca criem duplicatas.
+- **Tornar `sync_conferencia_itens` idempotente**: `ON CONFLICT (conferencia_id, equipamento_id) DO NOTHING`.
 
-### 3. Verificação
+### 2. Frontend — defensivo
 
-Após a migração, rodar `SELECT` para confirmar que toda OS tem 1 conferência e que `conferencia_itens.count == ordem_equipamentos.count` por OS.
+- Em `src/pages/OrdensServico.tsx`, na query do `ConferenciaPanel`, trocar `.maybeSingle()` por uma busca ordenada por `created_at asc` com `limit(1)` e pegar o primeiro elemento. Assim, mesmo que algum dia surja duplicata, o card continua sendo renderizado em vez de sumir silenciosamente.
+
+## O que **não** muda
+
+- Toda a UI do card de conferência (QR code, link, conferente, botões Copiar/Abrir) permanece intacta.
+- A tela de Conferência Pública e seus checkboxes recém-adicionados ficam como estão.
+- Os triggers de criação automática de conferência e sync de itens continuam ativos — apenas ficam idempotentes.
 
 ## Resultado esperado
 
-- Toda OS nova cria automaticamente sua conferência com QR/token e já vem com todos os equipamentos da OS prontos para serem ticados na tela pública.
-- OS antigas sem itens sincronizados ficam consistentes após o backfill.
-- Impossível criar OS sem equipamento (validação no app) e impossível ter equipamento da OS faltando na conferência (trigger).
+Após a migração, a OS #4 voltará a exibir o card "Conferência de chegada" igual ao print 1, com QR code e link válidos, e duplicatas não poderão mais ser criadas.
