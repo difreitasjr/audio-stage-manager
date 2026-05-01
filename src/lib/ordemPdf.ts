@@ -1,8 +1,16 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 
-export function gerarOrdemPdf(ordem: any) {
+export async function gerarOrdemPdf(ordem: any) {
   const doc = new jsPDF();
+  const conferenciaUrl: string | null = ordem.conferenciaUrl || null;
+  let qrDataUrl: string | null = null;
+  if (conferenciaUrl) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(conferenciaUrl, { margin: 1, width: 256 });
+    } catch { /* ignore */ }
+  }
   const pageW = doc.internal.pageSize.getWidth();
   let y = 15;
 
