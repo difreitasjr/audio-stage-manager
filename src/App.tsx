@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Setup from "@/pages/Setup";
+import Cadastro from "@/pages/Cadastro";
 import Dashboard from "@/pages/Dashboard";
 import Equipamentos from "@/pages/Equipamentos";
 import OrdensServico from "@/pages/OrdensServico";
@@ -67,6 +68,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/setup" element={<Setup />} />
+              <Route path="/cadastro" element={<PublicRoute><Cadastro /></PublicRoute>} />
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/conferencia/:token" element={<ConferenciaPublica />} />
               <Route path="/" element={<HomeRoute />} />
