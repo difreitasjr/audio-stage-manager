@@ -234,7 +234,7 @@ export default function OrdensServico() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewOrdem(o)}><Eye className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(o)} title="Editar"><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => gerarOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => downloadOrdemPdf(o)} title="Baixar PDF"><FileDown className="w-4 h-4" /></Button>
                         {o.status !== "retornado" && o.status !== "finalizada" && (
                           <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800"
                             onClick={() => iniciarRetorno.mutate(o.id, { onSuccess: (cid) => navigate(`/retornos/${cid}`) })}
@@ -295,7 +295,7 @@ export default function OrdensServico() {
                 <Button size="sm" variant="outline" onClick={() => openEdit(viewOrdem)}>
                   <Pencil className="w-4 h-4 mr-1" />Editar
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => gerarOrdemPdf(viewOrdem)}>
+                <Button size="sm" variant="outline" onClick={() => downloadOrdemPdf(viewOrdem)}>
                   <FileDown className="w-4 h-4 mr-1" />Baixar PDF
                 </Button>
               </div>
