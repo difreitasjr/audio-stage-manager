@@ -1,6 +1,8 @@
 // Public endpoint: returns OS data + items for a conferencia by token.
 // Reconcilia automaticamente: insere em conferencia_itens quaisquer
 // equipamentos da OS que ainda não estejam vinculados, antes de devolver a lista.
+// Faz lookup de equipamentos em uma segunda query (sem depender de join PostgREST),
+// para garantir que a lista nunca volte vazia por causa de cache de schema.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -63,18 +65,40 @@ Deno.serve(async (req) => {
           empresa_id: oe.empresa_id || empresaId,
           is_avulso: false,
         }));
-        // Best-effort; ignora erros de unique violation
         await supabase.from("conferencia_itens").insert(rows as any);
       }
     }
 
-    const { data: itens } = await supabase
+    // Busca itens SEM join (evita problemas de relacionamento)
+    const { data: itensRaw, error: itensErr } = await supabase
       .from("conferencia_itens")
-      .select("id, equipamento_id, conferido, metodo_conferencia, observacao, conferido_em, is_avulso, nome_avulso, equipamentos(nome, marca, modelo, numero_serie, codigo_barras, numero_patrimonio, foto_url)")
+      .select("id, equipamento_id, conferido, metodo_conferencia, observacao, conferido_em, is_avulso, nome_avulso, created_at")
       .eq("conferencia_id", conf.id)
       .order("created_at");
 
-    return json({ conferencia: conf, ordem, itens: itens || [] }, 200);
+    if (itensErr) {
+      return json({ error: `Falha ao listar itens: ${itensErr.message}` }, 500);
+    }
+
+    // Busca dados dos equipamentos vinculados (segunda query)
+    const equipIds = Array.from(
+      new Set((itensRaw || []).map((i: any) => i.equipamento_id).filter(Boolean))
+    );
+    let equipMap: Record<string, any> = {};
+    if (equipIds.length > 0) {
+      const { data: equips } = await supabase
+        .from("equipamentos")
+        .select("id, nome, marca, modelo, numero_serie, codigo_barras, numero_patrimonio, foto_url")
+        .in("id", equipIds);
+      for (const e of equips || []) equipMap[(e as any).id] = e;
+    }
+
+    const itens = (itensRaw || []).map((i: any) => ({
+      ...i,
+      equipamentos: i.equipamento_id ? equipMap[i.equipamento_id] || null : null,
+    }));
+
+    return json({ conferencia: conf, ordem, itens }, 200);
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
