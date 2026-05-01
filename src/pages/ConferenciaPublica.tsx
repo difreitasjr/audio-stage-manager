@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ export default function ConferenciaPublica() {
   const [itens, setItens] = useState<any[]>([]);
   const [nome, setNome] = useState("");
   const [busca, setBusca] = useState("");
+  const buscaInputRef = useRef<HTMLInputElement>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalizando, setFinalizando] = useState(false);
@@ -256,6 +257,7 @@ export default function ConferenciaPublica() {
                 <div className="relative">
                   <div className="flex gap-2">
                     <Input
+                      ref={buscaInputRef}
                       value={busca}
                       onChange={e => setBusca(e.target.value)}
                       placeholder="Código de barras, nº série, patrimônio ou nome do equipamento"
@@ -273,9 +275,11 @@ export default function ConferenciaPublica() {
                         <button
                           key={s.id}
                           type="button"
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
                             setBusca("");
                             marcarPorId(s.equipamento_id, "nome");
+                            buscaInputRef.current?.focus();
                           }}
                           className="w-full text-left px-3 py-2 hover:bg-muted border-b last:border-b-0 flex items-center justify-between gap-2"
                         >
